@@ -1,0 +1,248 @@
+/* Style sheet for Geon training materials 
+   Inspired by: 
+      http://tympanus.net/codrops/2012/11/02/heading-set-styling-with-css/
+*/
+
+body {
+   font-size: 1em;
+   color:#222;
+   background:#fbfbfb;
+   font-family:"Myriad Pro", Arial, Helvetica, sans-serif;
+   line-height: 1.3em;
+   margin: 5%;
+}
+
+/* Handling super- and subscripts as well as code. */
+sup, sub { 
+   vertical-align: baseline;
+   position:relative;
+   top: -0.4em;
+}
+sub { top: 0.4em; }
+
+p { 
+   margin: 0; 
+   margin-bottom: 1.3em;
+   padding-left: 0.5em;
+}
+li p {
+   margin-bottom: 0;
+} /* Keep list item names having space beneath them */
+
+
+/* Lists */
+/* Code in blocks and lists converted to a block */
+code { 
+   color: rgb(186, 6, 0); 
+   font-size: 1.3em;
+}
+pre, li br+code { 
+   font-size: 0.75em;
+   position: relative;
+   margin: 0.5em 2em 1.3em 2em;
+   padding: 0.25em;
+   padding-left: 0.8em;
+   border-radius: 0.5em;
+   border: 0.2em solid rgb(205, 205, 205);
+   background: rgb(245, 245, 245);
+   height: auto;
+   overflow:auto;
+}
+li br+code {
+   position: relative;
+   display:block;
+   margin-left: 0;
+   padding-left:0.5em;
+}
+
+a { text-decoration: underline; }
+a:link { text-decoration: none; }
+a:hover { color: #b6121a; text-decoration: underline; }
+
+h1 + p, 
+h2 + p, 
+h3 + p {
+   page-break-before: avoid;
+}
+
+/* Headers 2-4 have a left vertical marker starting at REDHAWK logo red
+   and fading slightly with each level.*/
+h2:after, 
+h3:after, 
+h4:after {
+    position: absolute;
+    content: "";
+    left: -0.2em;
+    top: 0;
+    bottom: 0;
+    width: 0.2em;
+    border-radius: 0.2em;
+    box-shadow: 
+        inset 0 0.1em 0.1em rgba(0,0,0,0.5), 
+        0 0.1em 0.1em rgba(255,255,255,0.3);
+}
+
+h2:after { background: #b6121a; }
+h3:after { background: #e32124; }
+h4:after { background: #e25a5f; }
+
+h1, h2, h3, h4 {
+   color: #005581;
+   position: relative;
+   page-break-after: avoid;
+   font-family: 'Hammersmith One', sans-serif;
+   font-weight: normal;
+   margin-top: 1.2em;
+   margin-bottom: 0.4em;
+}
+
+h1 {
+   font-size: 2.75em;
+   line-height: 1.0em;
+   text-shadow: 0.08em 0.02em #fff;
+   padding-right: 3.6em;
+   font-weight: bold;
+   background: url(../images/logos/geon_redhawk.png) no-repeat bottom right;
+   background-size:auto 1em;
+   background-origin: border-box;
+   page-break-before: always;
+}
+h1:before {
+   position:absolute;
+   content: "";
+   bottom: 0.07em;
+   height: 0.05em;
+   background: #005581;
+   width: 100%;
+   z-index: -1;
+}
+
+h2, h3, h4 {
+   padding: 0 0 0 0.2em;
+   line-height: 1.1em;
+}
+h2 {
+   font-size: 2.0em;    
+}
+
+h3, h4 { 
+   font-style: italic; 
+   font-family: 'Questrial', sans-serif;
+}
+h3 {
+   font-size: 1.6em;
+}
+h4 {
+   padding-left: 0.3em;
+   font-size: 1.2em;
+}
+
+/* Block quote offset to the right with Geon Blue 
+   vertical bar to the left.  Slim margins to tight
+   wrap with paragraphs */
+blockquote {
+   page-break-inside: avoid;
+   width:        35%;
+   float:        right;
+   font-size:    0.9em;
+   font-style:   italic;
+   padding-left: 1.3em;
+   margin-right: 0;
+   border-left:  0.3em solid #005581;
+}
+blockquote p:first-child {
+   margin-top: 0;
+}
+blockquote p:last-child {
+   margin-bottom: 0;
+}
+
+/* **** FIGURES AS CAPTIONS **** */
+figure {
+   page-break-inside: avoid;
+   border:        0.2em solid #ddd;
+   border-radius: 0.4em;
+   background:    #ddd;
+   box-shadow:    0 0.3em 0.5em rgb(90, 90, 90);    
+   margin:        0 0.5em 1.5em 0.5em;
+   float:         right;
+   width:         50%;
+}
+figure img {
+   width:100%;
+   border-radius:inherit;
+}
+figure figcaption { 
+   font-size:    0.75em;
+   font-style:   italic;
+   padding:      0.5em 2em;
+}
+/* Defaults: Occupy 50% width, float right with 5pt 
+   rounded-rectangle border with 3pt shadow, slight
+   margin, and image occupies whole area. */
+
+/* Special figure with caption, centered non-floating. */
+div.center_fig figure {
+   float:none;
+   margin: 0 auto 1.5em auto;
+}
+
+/* For managing images at section starts */
+div.section_image {
+   page-break-inside:avoid;
+}
+div.section_image figure {
+   line-height:0;
+   width:98%;
+   float:none;
+}
+div.section_image figure figcaption { display:none; }
+/* Figure width increased to 100% and expect no text
+   with line0height 0 and hidden caption (if present) */
+
+#copyrightblock {
+   page-break-before:  always;
+   display:            block;
+   padding:            1em;
+   margin-bottom:      2em;
+   border-top:         0.2em solid #005581;
+   border-bottom:      0.2em solid #005581;
+   font-size:          0.8em;
+   font-style:         italic;
+}
+
+/* Tables */
+table {
+   margin:           0.5em auto 1.5em auto;
+   width:            90%;
+   border-collapse:  collapse;
+}
+table, th, td {
+   border: 1px solid #005581;
+}
+table.entity_description th,
+table.entity_description td {
+   padding:       0;
+   padding-left:  0.25em;
+   padding-right: 0.25em;
+}
+table.entity_description th {
+   color:            rgb(225, 225, 225);
+   background-color: #005581;
+}
+
+/* Additional styling if printing.
+   Turn on display of titlepage image and copyright block.*/
+@media print {
+   html, body {
+      background: none;
+   }
+   pre, li br+code {
+      overflow: visible;
+      white-space: pre-wrap;
+   }
+   figure {
+      box-shadow: none;
+      border-color: rgb(205, 205, 205);
+   }
+}

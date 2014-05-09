@@ -1,0 +1,169 @@
+/* 
+    Copyright: 2014 Geon Technologies, LLC
+    
+    This file is part of HAWKEYE.
+    
+    HAWKEYE is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    
+ * @author: Thomas Goodwin
+ * 
+ * @summary: This the default CSS for the HAWKEYE Control Panel UIs.  It provides
+ *   several examples for how to use CSS to further layout or embelish elements
+ *   provided by the client or the user's own overrides.
+ * 
+ *   The default message conversion routine creates a container div block for
+ *   the specific rhtype:
+ *       Class: rhtype + "_container"
+ *       ID:    rhid
+ *   
+ *   This container is then further populated or updated by the different jQuery widgets
+ *   for each message.rhtype.  These widgets are in the redhawk namespace and follow the
+ *   pattern rhtype_container, for example, 'redhawk.device_manager_container'.
+ */ 
+/* 
+ * Ports are simply a label with a button for start/stop followed by a table of cells
+ * with statistic information.  While a stream is being received, the button's value is
+ * 'Stop' and will unhide the table.
+ *    [label] [button]
+ *    [table class=port_statistics]
+ *       [packet receive count] [value]
+ *       [data length]          [value]
+ * 
+ * Properties have some variety.  At a minimum it's a label and value.  If the property
+ * is editable (readwrite or writeonly), the value will be a text field accompanied with
+ * a submit button.  Otherwise the value is only an uneditable text field.  For example:
+ *    [label] [field]-[button]   <-- Readwrite or writeonly version
+ *    [label] [field]            <-- Readonly version.
+ * 
+ * If a property is an array, structure, or a structure array the result will be a series
+ * of unordered and/or unordered lists depenending on the situation.
+ */
+
+body {
+    font-family: sans-serif;
+}
+
+/* 
+ * Primary container for the UI.  All others will be children of this
+ * div or descendents of those children unless rhtype is explicitly
+ * overridden by parentIDOverrides in the user's server settings.
+ */
+div#hawkeye_ui {
+    display: block;
+    max-width: 500pt; 
+} /* Default UI container */
+div#hawkeye_ui > h1 {
+    position:relative;
+    line-height:0;
+    size: 16pt;
+} /* H1 properties if within the main container. */
+div#hawkeye_ui > div {
+    display:block;
+} /* Ensures top-level div children (>) are visible. */
+
+
+/* 
+ * By default, hide every div but provide some properties to
+ * have a border and offest itself from within another container
+ * to build a hierarchy if unhidden (display not none).
+ */
+div { 
+    display:       none;
+    position:      relative;
+    padding:       0.25em;
+    margin-left:   0.5em;
+    border:        1pt solid rgb(210, 210, 210);
+    border-radius: 4pt;
+    background:    rgba(235, 235, 235, 0.8);
+}
+
+label.show_hide {
+    user-select: none;
+} /* In many browsers this prevents the user from selecting text.  */ 
+
+
+/*
+ * Devices and Components insert two additional rhtype_group class containers for
+ * grouping port and property children.  These containers also have the default format
+ * of a checkbox and a label, but this CSS will make these two groups lose the rounded
+ * border. 
+ */
+div.property_group,
+div.port_group {
+    display:       block;
+    border-radius: 0;
+} /* Make them visible, remove rounded edges. */
+
+
+/*
+ * Default port_container divs come populated with a label, start-stop button, and
+ * a table of class port_statistics.
+ * 
+ * This CSS takes the group properties above further by removing the background
+ * and formatting the table's first column to be bold with a hairline border.
+ */
+div.port_container {
+    display:       block;
+    background:    none;
+    border-radius: 0;
+}
+div.port_container input[type='button'] {
+    float: right;
+} /* Move submit button to the right. */
+div.port_container input[value='Start'] ~ table.port_statistics {
+    display: none;
+} /* Hide the table if we're not streaming */
+table.port_statistics {
+    display: table;
+    border-collapse: collapse;
+    width:      100%;
+} /* Collapse white-space in all borders */
+table.port_statistics,
+table.port_statistics tr td {
+    border: 1px solid #005581;
+    text-align: right;
+} /* Add blue hairline border to the table and cells, right-align text. */
+table.port_statistics tr td:first-child {
+    font-weight: bold;
+    text-align: left;
+    width: 45%;
+} /* First column has bold text, left-align, column width 45% */
+
+
+/*
+ * Properties - These contain a form with: [text] [input] [submit*]
+ * if scalar values.  Otherwise it's a form with lists of those items.
+ * NOTE: *The submit button only exists if the property is readwrite 
+ *        or writeonly.
+ */
+div.property_container {
+    display: block;
+    border: none;
+    border-radius: 0;
+    background: none;
+} /* Show the block (if possible), remove border, etc. */
+form.property input {
+    float: right;
+} /* Slide all inputs to the right. */
+form.property ul, 
+form.property ol {
+    -webkit-margin-before:  0;
+    -webkit-margin-after:   0;
+    -webkit-padding-start: 10pt;
+} /* Remove spacing on lists. */
+form.property li {
+    line-height: 1.5em;
+    list-style: none;
+} /* Give enough room for text fields to float right w/o wierdness
+     also remove bullets/numbers */

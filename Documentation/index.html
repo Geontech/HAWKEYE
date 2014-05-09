@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<link rel="stylesheet" type="text/css" href="css/style.css" />
+		<title>HAWKEYE Documentation</title>
+	</head>
+<body>
+
+<h1>Purpose and Goals</h1>
+
+<p>The current Control Panel solution for REDHAWK involves creating SCA Control Panel projects in the Eclipse IDE. Unfortunately the features and ease of use have become a hurdle for rapidly prototyping control panels despite the Python REDHAWK model continuing its development. </p>
+
+<p>This effort is intended to bridge the gap by providing a Node.js-backed Control Panel server which can be customized using standard JavaScript (jQuery), HTML, and CSS. Some of the packages used are<a href="http://nodejs.org">Node.js</a>, <a href="http://socket.io/" title="Socket.io">Socket.io</a>, and <a href="http://zerorpc.dotcloud.com" title="ZeroRPC: ZeroMQ + MessageQueue">ZeroRPC</a>. All are freely available and open-source.</p>
+
+<h2>Node.js</h2>
+
+<p>Node.js is a light-weight single-threaded server that has been tested for years by many high-traffic websites including <a href="http://www.linkedin.com" title="LinkedIn">LinkedIn</a>. The choice to use Node.js was driven by a customer&#39;s preference, but given its aforementioned pedigree, it has wide community support. It is reinforced with <a href="http://expressjs.com" title="Express.js - Node.js web application">Express.js</a> to simplify extending the base server&#39;s file system.</p>
+
+<h2>Socket.io</h2>
+
+<p>Socket.io is intended for (near) real-time interactive websites -- providing bidirectional flow of information from the server to the client. This traffic is commonly communicated as JSON strings. The REDHAWK Control Panel Server leverages this strength by defining its own simple message format for these exchanges.</p>
+
+<h2>ZeroRPC</h2>
+
+<p>This open-source framework is based on ZeroMQ and Gevent. It provides pseudo remote procedure calls (RPC). Internally, it exchanges messages between clients and servers by converting the objects passed into JSON messages. The REDHAWK Control Panel Server uses this library to bridge the gap between JavaScript in the Node.js server to the REDHAWK Gateway Python class.</p>
+
+<h1>Installation</h1>
+
+<p>Aside from copying the HAWKEYE Control Panel Server files somewhere system-local to the REDHAWK installation, installing the support files is straight-forward on an existing CentOS 6.4 64-bit with REDHAWK 1.9.0 already installed<sup><a id="ffn1" href="#fn1" class="footnote">1</a></sup>:</p>
+
+<pre><code># yum install npm --enablerepo=epel
+# yum install zeromq zeromq-devel
+# pip install zerorpc
+</code></pre>
+
+<p>The <code>hawkeye</code> and its associated examples each have a <code>package.json</code> defining their dependencies. These dependencies can be installed via <code>npm install</code>. </p>
+
+<p>If any trouble is encountered, see the online documentation for <a href="https://github.com/joyent/node/wiki/Installing-Node.js-via-package-manager" title="Installing Node.js from package managers">Node.js</a>, <a href="http://socket.io/#how-to-use" title="Socket IO: How to Use">Socket.io</a>, <a href="http://zeromq.org/distro:centos" title="ZeroMQ installation for CentOS">ZeroMQ</a>, and <a href="http://zerorpc.dotcloud.com/" title="ZeroRPC Installation">ZeroRPC</a>. It may be necessary to update EPEL, etc., for the installation to be successful.</p>
+
+<h2>Hello World</h2>
+
+<p>Two examples are provided in the <code>examples</code> folder. The <code>default</code> example is a bare-bones hierarchy view of any running domain. The <code>custom</code> example changes things up a bit by implementing a 2-panel design: one for online waveforms, and the other for all device managers. As a simple test, run the default server:</p>
+
+<pre><code>node examples/default
+</code></pre>
+
+<p>If successful, the console will show:</p>
+
+<pre><code>   info - socket.io started
+HAWKEYE Control Panel Server Started
+</code></pre>
+
+<p>Your web browser should be able to connect to the server on port 8888. Start a Domain if none are currently active. Within roughly 1 second of the UI loading, it should push an update with the domain(s)<sup><a id="ffn2" href="#fn2" class="footnote">2</a></sup>:</p>
+
+<div class="center_fig">
+<figure><img src="images/default_domain_started.png" alt="REDHAWK Control Panel populated" title="Control Panel Startup"/><figcaption>REDHAWK Control Panel populated</figcaption></figure>
+
+</div>
+<p>The default panel jQuery widgets and CSS provide for a collapsable hierarchical menu system. The basic set of <code>_container</code> class objects are visible for the standard set of REDHAWK types (Devices, Ports, etc.). And each label has an <code>onclick</code> toggle behavior to expand and collapse the contents of the container. </p>
+
+<p>If you have access to a developer console on your browser, you can alter the <code>css/hawkeye_ui.css</code> file. This file dictates a great deal about layout, colors, visibility -- how the page is rendered.</p>
+
+<h2>Hello World... Custom</h2>
+
+<p>Try the Hello World procedure again with <code>examples/custom</code>. Its features will be covered later, but in summary it provides two additional panels in the index template, more CSS, and a custom message handler script to enhance the layout and features even more.</p>
+
+<p>With those small changes a different view of the system emerges. All Domains are hidden -- instead their contents, Applications and Device Managers, are repositioned into their own respective containers. The result is a multi-domain view showing all running applications and Device Managers.</p>
+
+<h1>Architecture</h1>
+
+<div class="section_image">
+<figure><img src="images/architecture_title.png" title="Control Panel Server Architecture"/></figure>
+
+</div>
+<p>The HAWKEYE Control Panel Server&#39;s architecture is depicted in the figure at the start of this section. At a high-level, it is a single Node.js server which spawns individual <code>RH_Session</code> and <code>RH_Gateway</code> pairs for each unique client session. These two elements serve to bridge the gap between the client&#39;s JavaScript-based environment and the REDHAWK Python Model. These interconnections are TCP and UNIX (IPC<sup><a id="ffn3" href="#fn3" class="footnote">3</a></sup>) sockets, respectively, and rely on JSON for data translation.</p>
+
+<p>It is important to note that the only section that is truly Node-specific is the <code>hawkeye</code>. The <code>rh_session</code> is specific for bridging Socket.io and ZeroRPC, but it is otherwise -generic JavaScript. The RH Gateway is a simple Python fronted to handle the ZeroRPC bridges facilitating streams passing to and from its proxy objects actually connected to the REDHAWK model. </p>
+
+<p>All connections could be replaced with Socket.io, or some other mechanism, to propagate the message streams into- and out-of the model. The real API to the <code>RH_Gateway</code> is its message structure. </p>
+
+<p>Finally, since the <code>RH_Gateway</code> relies on the same OmniORB service for interacting with the REDHAWK model, it is possible to run the control panel server on a separate system from the domain managers.</p>
+
+<h2>Startup</h2>
+
+<p>Starting the server is fairly typical. It parses the user&#39;s provided settings (if any), and then begins listening on the assigned port. Its when a browser connects to the server that the real effort begins.</p>
+
+<p>When the browser connects to the Node.js server, the first task transmits the base set of site files (<code>index.html</code>, the UI CSS, client javascript, etc.) to the browser. The task also opens a Socket.io session to wait for the browser to load those files.</p>
+
+<p>One of the source files included by the index template is the <code>hawkeye_client.js</code>, a script whose tasks are to start the client-side Socket.io connection and translate the message stream. Once the server-side receives this <code>connection</code> event, the server searches for a matching <code>RH_Session</code> for the socket. If no match is found, a new <code>RH_Session</code> is created.</p>
+
+<p>The <code>RH_Session</code> starts its ZeroRPC Server and spawns a new Python child process called <code>RH_Gateway</code>. The <code>RH_Gateway</code> similarly starts by creating 2 <a href="http://sdiehl.github.io/gevent-tutorial/#greenlets" title="Greenlet: light-weight coroutine with cooperative scheduling.">Greenlets</a>. One serves as the client and the other as a server to the <code>RH_Session</code>. This relationship establishes the language bridge<sup><a id="ffn4" href="#fn4" class="footnote">4</a></sup> for exchanging the client-server Socket.io messages and the ZeroRPC server-model messages.</p>
+
+<h2>Proxy Objects</h2>
+
+<p>The <code>rh_gateway</code> top-level package is a class, <code>RH_Gateway</code>, acting as a ZeroRPC server and a single callback function acting as a ZeroRPC client. The two are <code>gevent</code> <code>greenlets</code> and are bridged by a common <code>gevent.Queue</code> for message transfers. </p>
+
+<p>Messages going into the REDHAWK model arrive through the <code>RH_Gateway</code>. Messages leaving <code>RH_Gateway</code> (or its proxies) can either exit immediately after the client message is processed or be queued for asynchronous transfer back to the client via the <code>sendMessages</code> method.</p>
+
+<p>The <code>RH_Gateway</code> is fairly simple. It manages a <code>greenlet</code> process for detecting changes in the domains on the local naming service. As Domains are added and removed, this top-level object handles creating or cleaning up the proxy objects.</p>
+
+<p>These proxy objects are children of <code>Proxy_Base</code> (found in <code>core.py</code>). Everything the <code>RH_Gateway</code> is capable of representing to the attached client has a <code>Proxy_Base</code> subclass (from Domains down to Properties) with each individually managing what it means to <code>_processThisMessage</code> or monitor its piece of the REDHAWK model.</p>
+
+<p>One example is the Domain proxy object. It attaches to the ODM event channel to detect Device Manager and Application changes. Those two changes result in more proxy objects being created or existing ones being removed (<code>cleanUp</code>). </p>
+
+<p>A common feature of the <code>Proxy_Base</code> class is managing the <code>_children</code> <code>Proxy_Base</code> instances which are all automatically issued <code>cleanUp</code> if the parent receives the call. It also has a simple setup for a periodic asynchronous callback: <code>doPeriodicTask</code> and <code>stopPeriodicTask</code> which drive the subclass&#39;s <code>_doPeriodicTask</code>.</p>
+
+<h2>Messaging</h2>
+
+<p>All model traffic between the <code>RH_Gateway</code> and the browser is by JSON-converted <code>RH_Message</code> lists. Over the Socket.io connections, messages must be manually converted into and out-of JSON format. The ZeroRPC connections on the other hand translate the objects internally to JSON format. At the <code>RH_Gateway</code> these messages are interpreted into and from methods found in the REDHAWK Python model -- effectively wrapping much of the model&#39;s API in an asynchronous streaming API.</p>
+
+<p>These messages currently have the following fields:</p>
+
+<table class="entity_description">
+<tr>
+<th>Name</th>
+<th>Values</th>
+<th>Description</th>
+</tr>
+<tr><!-- Change -->
+<td>change</td>
+<td>add
+<br>remove
+<br>update
+<br>start
+<br>stop
+<br>stream
+</td>
+<td>The type of change this message represents.</td>
+</tr>
+<tr><!-- Type -->
+<td>rhtype</td>
+<td>domain
+<br>device_manager
+<br>device
+<br>service
+<br>application
+<br>component
+<br>port
+<br>property
+</td>
+<td>The type of REDHAWK entity is associated with the rhid.</td>
+</tr>
+<tr><!-- ID -->
+<td>rhid</td>
+<td>anything</td>
+<td>The unique ID (often its REDHAWK UUID) associated with this REDHAWK entity.</td>
+</tr>
+<tr><!-- Name -->
+<td>rhname</td>
+<td>anything</td>
+<td>The name of the REDHAWK entity.</td>
+</tr>
+<tr><!-- more -->
+<td>more</td>
+<td>dictionary</td>
+<td>Always includes <code>parentID</code>, the parent's unique ID or empty.  Other keys are entity-specific.</td>
+</tr>
+</table>
+<h3>Messaging API</h3>
+
+<p>A more complete API description for these messages will be provided in the future as the capabilities increase. Some examples are provided below.</p>
+
+<h4>The Update Behavior</h4>
+
+<p>When the Client issues an <code>update</code> to the <code>RH_Gateway</code> without any additional information in <code>more</code>, it is always treated as a refresh from that point in the hierarchy. For example, issuing the <code>update</code> to a Device will refresh all of its Ports and Properties, etc. Only requesting an <code>update</code> of a specific Property will refresh only that Property.</p>
+
+<p>When the <code>RH_Gateway</code> issues an <code>update</code>, it is usually a response to a change in the model or from a Client&#39;s request. It carries all necessary information to represent the individual change. If subcomponents (properties, etc.) also changed, those messages will be pushed separately.</p>
+
+<p>With Properties, a Client can <code>update</code> with a <code>more.value</code> being the new value for the named property. This will be treated by the <code>RH_Gateway</code> as an attempt to <code>configure</code> the Property. It will then in-turn reciprocate with an <code>update</code> with <code>more.value</code> providing whatever the value of the Property is, per the model.</p>
+
+<p>The last use of <code>update</code> is with the Port objects. When a <code>stream</code> finishes, it will be punctuated with one final data-less <code>update</code> message to indicate the stream did stop.</p>
+
+<h4>Add and Remove</h4>
+
+<p>The Client is an observer of the model so it being able to send <code>add</code> or <code>remove</code> to the <code>RH_Gateway</code> does not have a context in this API. On the other hand, the <code>RH_Gateway</code> will represent additions and removals of entities in the model by these two message types.</p>
+
+<h4>Start and Stop</h4>
+
+<p>These changes are exclusively Client-to-<code>RH_Gateway</code> commands at this time. Port and Application<sup><a id="ffn5" href="#fn5" class="footnote">5</a></sup> entities will respond to <code>start</code> and <code>stop</code> messages. For Ports, these two change commands correlate to starting and stopping a stream. For an Application, <code>start</code> and <code>stop</code> are as you would expect. Once stopped, another <code>stop</code> will release the associated Waveform.</p>
+
+<h4>Stream</h4>
+
+<p>Messages of this change type are exclusively <code>RH_Gateway</code>-to-Client. When the Client issues <code>start</code>, the <code>RH_Gateway</code> will immediately acknowledge with an empty <code>stream</code> message. Once its internal push process begins to queue, it the Port will continue transferring <code>stream</code> messages with <code>more.data</code> to the Client. This process will continue until the Client issues <code>stop</code> or the parent entities to the Port is terminated (for any reason).</p>
+
+<p>The <code>more</code> field of the <code>stream</code> message has a number of new fields attached to it beyond just <code>parentID</code>. It also includes:</p>
+
+<ul>
+	<li><code>storageType</code>: If each list element in <code>data</code> is a key-value pair, this will be <code>keys</code><sup><a id="ffn6" href="#fn6" class="footnote">6</a></sup>. Otherwise each element can be treated as raw <code>value</code><sup><a id="ffn7" href="#fn7" class="footnote">7</a></sup>.</li>
+	<li><code>direction</code>: Data flow direction in terms of <code>uses</code> or <code>provides</code>.</li>
+	<li><code>nameSpace</code>: Taken from the port&#39;s <code>_interface</code>, this could be <code>FRONTEND</code>, <code>BULKIO</code>, etc.</li>
+	<li><code>data</code>: According to <code>storageType</code>, this is either a list of key-value-pairs or list of values.</li>
+</ul>
+
+<p>Currently only FRONTEND GPS and the variety of BULKIO outputs are supported. The other ports receive a default acknowledgement behavior as a proof-of-life test for the client.</p>
+
+<p>The BULKIO extends the <code>more</code> field with additional data gleaned from the model. It contains <code>eos</code>, <code>stream_id</code>, and <code>sri</code>. The <code>sri</code> is limited at this time to only the <code>xdelta</code> and <code>mode</code> properties.</p>
+
+<p>Finally, the default UI behavior for all streams is to count messages received and message length. A start-stop button is provided and, when the stream is active, the data is shown in a table.</p>
+
+<h2>Model-View-Controller</h2>
+
+<p>The REDHAWK Control Panel Server provides the controller in a Model-View-Controller (MVC) -like integration between the Python-based REDHAWK interface (model) and the client&#39;s browser (view). The term <em>like</em> is used because the implementation splits the controller between the server and the client even though all files are provided by the Node.js server.</p>
+
+<p>From the server-side, most of the work is handled for the user. Per unique Socket.io session, the server manages an <code>RH_Gateway</code> instance for each client<sup><a id="ffn8" href="#fn8" class="footnote">8</a></sup>. Its sole purpose is to act as a bridge carrying the message stream between ZeroRPC and the Socket.io client for the duration of the session. From that perspective then it&#39;s a front-end for the client&#39;s side of the controller. </p>
+
+<p>The client-side files are driven by the various paths defined on the server. The base set of files served are in <code>hawkeye/site</code>. By way of Express.js&#39;s <code>use()</code> these files can be replaced with user-defined files as well as further extended with more site paths. </p>
+
+<p>The <code>site/index.html</code> template&#39;s header defines Socket.io, jQuery, <code>rh_message</code>, and the <code>hawkeye_client</code> to support the user interface. The <code>hawkeye_client</code> should be included after the others because of its internal dependencies on them. Any user scripts depending on these scripts should appear after these declarations.</p>
+
+<h2>jQuery and UI Widgets</h2>
+
+<p>The REDHAWK Control Panel Server&#39;s <code>hawkeye_client</code> defines multiple jQuery UI widgets. This allows for the user to further extend the base widgets with new behaviors and features to support more complex message processing in the future.</p>
+
+<p>These UI Widgets exist in the <code>hawkeye</code> namespace and have several classes and subclasses (in as much as the terms apply to UI Widgets). Common to most of these subclasses is the <code>default_msg_container</code> which adds options for an <code>RH_Message</code> and a callback event, <code>configured</code>, for when the common <code>configureMessage</code> method finishes. </p>
+
+<p>The <code>configured</code> event passes the related message to any attached event listeners. This allows the message stream to drive multiple UI changes without requiring the end-user to modify the UI Widget in question. The <code>rashawk_ui/site/js/message_handlers.js</code> provides examples of how to drive other UI objects including Google Maps and Processing.js-based HTML5 plotting with streams from specific Ports.</p>
+
+<h1>Configure and Implement</h1>
+
+<p>Recall that the HAWKEYE Control Panel Server sets up a Model-View-Controller (MVC) relationship by splitting the controller into two parts. The first provides a means to translate the model into a stream of messages via the <code>RH_Gateway</code> interface, and the other is a graphical interpreter and responder for those messages. While the former lacks any real customization at this time, the latter (server/client) is flexible.</p>
+
+<h2>The Server</h2>
+
+<p>The HAWKEYE Control Panel Server is expected to be required and passed an Express.js application instance. The most simple configuration is:</p>
+
+<pre><code>var rhcp = require(&#39;hawkeye&#39;)(
+              require(&#39;express&#39;)()
+);
+</code></pre>
+
+<p>This Express.js instance can be reconfigured with additional paths, etc., that would be preferentially selected over the <code>hawkeye</code> default <code>site</code> path and files. For example, a user&#39;s providing a root path with <code>index.html</code> will serve that file rather than the default (see <code>examples/custom</code>):</p>
+
+<pre><code>var express = require(&#39;express&#39;), 
+    app = express(),
+    rhcp = require(&#39;hawkeye&#39;);
+app.use(express.static(&#39;./my_site_path&#39;);
+rhcp(app);
+</code></pre>
+
+<p>Since Node.js is providing the server, Express.js app framework, and Socket.io the stream, end users can also wipe out the whole web interface in lieu of some other technology (Android, iOS, Flash, etc.). The one requirement is for the client to use HTTP to initiate contact, and then use a transport type supported by Socket.io.</p>
+
+<p>In addition to the file system, the user can specify a few options on the <code>hawkeye</code> instance itself when attaching it to the Express.js instance. The options are the port to use for the HTTP server and whether or not to emit STDOUT and STDERR messages from the <code>RH_Gateway</code> into the server&#39;s log. It&#39;s a simple structure:</p>
+
+<pre><code>// ... express, app, etc.
+var opts = { UsePort:    1245,
+             Log_STDOUT: false, 
+             Log_STDERR: true };
+rhcp(app, opts);
+</code></pre>
+
+<p>Any options not supplied will be replaced by the defaults -- no logging and port 8888.</p>
+
+<h2>The User Interface</h2>
+
+<p>The HAWKEYE Control Panel Server allows the user to specify their own files for <code>index.html</code>, a cascading style sheets (CSS), and an optional JavaScript for client-side message handling<sup><a id="ffn9" href="#fn9" class="footnote">9</a></sup>. These three elements layout the interface at the Client&#39;s browser with some default behaviors provided by the jQuery UI widgets in the <code>hawkeye</code> namespace (defined in <code>hawkeye_client.js</code>).</p>
+
+<p>Generally speaking, elements are added to the screen by messages having a <code>change</code> of <code>add</code>. This process looks for the user-provided constructor or a default jQuery <code>hawkeye</code> UI widget to represent the message. Regardless of who defines the widget, the widget is applied to a <code>div</code> container whose <code>id</code> will match the message <code>rhid</code><sup><a id="ffn10" href="#fn10" class="footnote">10</a></sup>. </p>
+
+<p>The default set of <code>hawkeye</code> widgets inherit from <code>default_msg_container</code> which ensures that the <code>class</code> of the <code>&lt;div&gt;</code> will match the <code>rhtype</code> followed by <code>_container</code> and contain a <code>&lt;label&gt;</code> matching the <code>rhname</code> from the message (its class is <code>show_hide</code>). This ensures that all containers support the <code>onclick</code> behavior of showing and hiding their <code>&lt;div&gt;</code> children -- yielding an animated hierarchical menu system.</p>
+
+<p>For example, a <code>device</code> might have a container inserted:</p>
+
+<pre><code>&lt;div class=&quot;device_container&quot; id=&quot;rollingStones&quot;&gt; ... &lt;/div&gt;
+</code></pre>
+
+<p>The user&#39;s CSS could then manipulate how this container, and its contents, are displayed by the associated CSS:</p>
+
+<pre><code>div.device_container {
+   /* position absolute top left, etc. */
+} 
+div.device_container + button {
+   /* If a button is the first child it 
+      will have these settings */
+}
+div.device_container button {
+   /* Otherwise, draw this container&#39;s
+      buttons all like this */
+}
+</code></pre>
+
+<p>If necessary, the ID can be used to single out a specific container:</p>
+
+<pre><code>div#rollingStones.device_container {
+   /* Perhaps paint it black? */
+}
+</code></pre>
+
+<p>Once this container is created though, a parent container is found in the document. But parent selection can also be customized.</p>
+
+<h3>Find a Parent</h3>
+
+<p>Parent container selection has the following order of precedence: user, message, default. </p>
+
+<ol>
+	<li>If the user provided and referenced a script which contains <code>parentIDOverrides</code> dictionary<sup><a id="ffn11" href="#fn11" class="footnote">11</a></sup>, it is searched for the <code>rhtype</code> provided by the message. </li>
+	<li>If the first decision failed or was invalid, the UI attempts to use the <code>message.more.parentID</code> as the parent container&#39;s ID. If that parent is found and has a child container with class <code>rhtype_group</code>, that container will be used as the parent<sup><a id="ffn12" href="#fn12" class="footnote">12</a></sup>. Otherwise the parent is used.</li>
+	<li>If still no parent container could be found, the default container ID, <code>hawkeye_ui</code>, is used as the parent. </li>
+</ol>
+
+<p><strong>NOTE:</strong> It is the user&#39;s responsibility to ensure a parent exists if a widget is going to be added to the site. If <code>hawkeye_ui</code> does not uniquely<sup><a id="ffn13" href="#fn13" class="footnote">13</a></sup> exist in <code>index.html</code>, all <code>rhtype</code>s must be overridden in <code>parentIDOverrides</code> or dropped via the <code>messageHandlers</code>.</p>
+
+<h3>Adding Contents</h3>
+
+<p>Similar to finding a parent, the user&#39;s having provided a <code>messageHandlers</code> dictionary of functions will take precedence over the default behavior. The key to this dictionary must be an <code>rhtype</code> and its value a callback.</p>
+
+<p>The callbacks defined in <code>messageHandlers</code> must accept an <code>RH_Message</code> as the argument. The callback must also not apply the <code>rhid</code> of the message as the <code>id</code> of any contents<sup><a id="ffn14" href="#fn14" class="footnote">14</a></sup>. It must either return <code>null</code> or a widget of the appropriate container class name (for example, <code>device_manager_container</code>). </p>
+
+<p><strong>NOTE:</strong> The class name&#39;s matching the default is necessary so all future messages will be routed to the appropriate widget callbacks. jQuery UI Widgets can be subclassed directly over the original class name: </p>
+
+<pre><code>$.widget(&quot;hawkeye.device_container&quot;, 
+        $.hawkeye.device_container, {
+   // Modify the class as desired
+});
+</code></pre>
+
+<p>If the function returns <code>null</code>, <strong>nothing</strong> for this message will be inserted anywhere into the document regardless of having found the parent container. Returning <code>null</code> is best understood as one ignoring the proxy object. The proxy object still exists and may emit other messages to the client, but since no widget was created, those messages will also be dropped<sup><a id="ffn15" href="#fn15" class="footnote">15</a></sup>.</p>
+
+<p>Requiring the widget to be of the appropriate container class ensures that other message <code>change</code> types are passed to the appropriate widget&#39;s <code>configureMessage</code> implementation. If a user wants to modify a widget (contents, behaviors, etc.), one can subclass a widget with itself to overlay the new behavior:</p>
+
+<pre><code>$.widget(&quot;hawkeye.application_container&quot;,
+   $.hawkeye.application_container, 
+   { 
+      // overloaded functions... 
+   });
+</code></pre>
+
+<p>If the user&#39;s defined function fails, or is not present, an error is output in the client&#39;s log. The <code>add</code> having been effectively ignored, so too are all future messages for that <code>rhid</code>.</p>
+
+<h2>Removing the User Interface</h2>
+
+<p>Per the HTML spec, the <code>id</code> of a DOM Element must be unique throughout a document. The REDHAWK Control Panel Server&#39;s <code>RH_Gateway</code> and <code>hawkeye_client</code> leverage this requirement by binding the proxy object&#39;s message <code>rhid</code> to the <code>id</code> of the resulting container for each message. </p>
+
+<p><strong>NOTE:</strong> The proxy object&#39;s <code>rhid</code> may not be exactly the UUID as seen in the REDHAWK domain since not all IDs are domain-wide unique. For example, Property proxy objects concatenate it&#39;s parent&#39;s <code>rhid</code> with the property&#39;s name.</p>
+
+<p>By maintaining that uniqueness, the <code>hawkeye_client</code> script can easily prune any visualization related to the <code>rhid</code> that the <code>RH_Gateway</code> proxy objects indicate no longer exist via the <code>message.change</code> of <code>remove</code>.</p>
+
+<h1>Custom Example In Depth</h1>
+
+<p>Two examples servers are provided: <code>examples/default</code> and <code>examples/custom</code>. Since the default is effectively a one-line-launch with no alternate site files, let us look at the custom example.</p>
+
+<p>The custom example&#39;s shows how a few simple overrides can drastically change how the UI handles the incoming stream. It totally ignores all Domain messages and instead generically groups all Device Manager and Application UIs into their own categories. It also adds some style to the main headers and adds a <code>Refresh</code> button to Device Managers. To do this it supplies alternate and additional site files when launching:</p>
+
+<pre><code>var express = require(&#39;express&#39;),
+    app = express();
+app.use(express.static(__dirname + &#39;/site&#39;));
+var rhcp = require(&#39;../../hawkeye&#39;)(app);
+</code></pre>
+
+<p>The specifics of this overlaid site path are covered in the following sections.</p>
+
+<h2>Index Template</h2>
+
+<p>The custom <code>site/index.html</code> provides for two new containers, <code>redhawk_device_managers</code> and <code>redhawk_applications</code>. These new containers will be used for the Device Manager and Application hierarchy found in <em>any Domain</em>:</p>
+
+<pre><code>&lt;div id=&quot;hawkeye_ui&quot;&gt;
+   &lt;h1&gt;Custom Control Panel&lt;/h1&gt;
+   &lt;!-- required container --&gt;
+   &lt;div id=&quot;redhawk_device_managers&quot;&gt;
+      &lt;h1&gt;Device Managers&lt;/h1&gt;
+      &lt;!-- Container for all Device Manager panels --&gt;
+   &lt;/div&gt;
+   &lt;div id=&quot;redhawk_applications&quot;&gt;
+      &lt;h1&gt;Applications&lt;/h1&gt;
+      &lt;!-- Container for all Application panels --&gt;
+   &lt;/div&gt;
+&lt;/div
+</code></pre>
+
+<p>Additionally in the header, it specifies a new <code>script</code>: <code>/js/message_handlers.js</code>.</p>
+
+<h2>Parent IDs</h2>
+
+<p>In <code>/js/message_handlers.js</code> the <code>parentIDOverrides</code> is implemented. It ensures all <code>device_manager</code> and <code>application</code> related containers are inserted into the <code>redhawk_device_managers</code> or <code>redhawk_applications</code> containers above, as appropriate:</p>
+
+<pre><code>parentIDOverrides = {
+    device_manager : &#39;redhawk_device_managers&#39;,
+    application    : &#39;redhawk_applications&#39;
+};
+</code></pre>
+
+<h2>Message Handling</h2>
+
+<p>The <code>/js/message_handlers.js</code> also implements <code>messageHandlers</code> -- further modifying the UI.</p>
+
+<p>The jQuery <code>hawkeye</code> UI widgets are defined in jQuery&#39;s <code>noConflict</code> state. To modify use or modify them in <code>messageHandlers</code>, it is necessary to wrap it to access jQuery and the <code>hawkeye</code> namespace:</p>
+
+<pre><code>jQuery.noConflict();
+(function ($) {
+   // Override any widget classes...
+   messageHandlers = { 
+      // define handlers...
+   };
+})(jQuery);
+</code></pre>
+
+<p>The custom example simply returns <code>null</code> for <code>domain</code>. For <code>device_manager</code> types though, it uses the pre-defined <code>device_manager_container</code> and inserts a <code>Refresh</code> button.</p>
+
+<pre><code>device_manager: function(message) {
+   var $obj = $(&#39;&lt;div&gt;&#39;).device_manager_container({message: message});
+   var $refresh = $(&#39;&lt;input type=&quot;button&quot;&gt;&#39;)
+      .addClass(&#39;refresh&#39;)
+      .attr(&#39;value&#39;, &#39;Refresh&#39;)
+      .attr(&#39;onclick&#39;, getActionString(message, &#39;update&#39;, true))
+      .insertAfter($obj.children(&#39;.show_hide&#39;));
+    return $obj;
+}
+</code></pre>
+
+<p><strong>NOTE:</strong> Various utility functions are provided in <code>hawkeye_client.js</code> and <code>rh_message.js</code> for common tasks related to the <code>RH_Message</code> structure and interacting with the server.</p>
+
+<p>Since the container&#39;s defined <code>configureMessage</code> behavior will not in some way interfere with the new button, it is not necessary to create a new subclass. Also note that no where in the handler is the <code>rhid</code> applied to the <code>id</code> of the container widget -- it is added automatically as long as a valid widget is returned.</p>
+
+<h2>Alternative CSS</h2>
+
+<p>The <code>custom/site</code> path also includes a different <code>css/hawkeye_ui.css</code> file describing how to draw these new DOM Elements. For example, the two new parent containers are moved to be side-by-side in the parent panel:</p>
+
+<pre><code>div#hawkeye_ui &gt; div {
+    display:        inline-block;
+    width:          47%;
+    vertical-align: text-top;
+}
+</code></pre>
+
+<p>Additionally, the two new container&#39;s headers are given additional style, and the <code>Refresh</code> button is floated to the right of the <code>redhawk_device_manager</code> class&#39;s heading.</p>
+
+<pre><code>div#redhawk_applications &gt; h1,
+div#redhawk_device_managers &gt; h1 {
+    line-height:  0;
+    size:         14pt;
+    color:        #b6121a; 
+    text-shadow:  1pt 1pt 2pt black;
+} 
+div._device_manager_container &gt; input.refresh {
+   float: right;
+}
+</code></pre>
+
+<p>See the <code>css/hawkeye_ui.css</code> for other changes and tweaks made to the default CSS. The result when looking at a running Device Manager and Application:</p>
+
+<div class="section_image">
+<figure><img src="images/custom_panel.png" alt="Showing example_custom.js with two Device Managers and one Application running." title="Example of a Custom UI"/><figcaption>Showing example_custom.js with two Device Managers and one Application running.</figcaption></figure>
+
+</div>
+<h1>Conclusion</h1>
+
+<p>At its most default, it has a layout approaching a trimmed-down SCA Explorer&#39;s level of utility. But through some simple overrides, a user can create a rich control panel system backed by industry-supported and open-source projects. </p>
+
+<p>The HAWKEYE Control Panel Server provides the low-level work of translating the REDHAWK model into a simple stream for a user&#39;s control panel design. It includes several widgets and in-depth examples for one method of interacting with that stream in a web-based user interface over a Socket.io connection. And since Express.js is used, the user can also create a server for other client-side interfaces.</p>
+
+<div id="copyrightblock">
+<p>Copyright 2014 Geon Technologies, LLC</p>
+
+<p>HAWKEYE is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.</p>
+
+<p>This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details. </p>
+
+<p>You should have received a copy of the GNU General Public License along with this program. If not, see <a href="http://www.gnu.org/licenses" title="GNU Licenses">http://www.gnu.org/licenses</a>.</p>
+
+</div>
+<div style="display:none">
+<figure><img src="logos/geon_redhawk.png" alt="Geon, LLC, and REDHAWK logos"/><figcaption>Geon, LLC, and REDHAWK logos</figcaption></figure>
+
+</div><ol id="footnotes">
+	<li id="fn1">Installation may require root access. <a href="#ffn1">&#8617;</a></li>
+	<li id="fn2">If you start multiple domains, each domain must have a unique ID. <a href="#ffn2">&#8617;</a></li>
+	<li id="fn3">Interprocess Communication <a href="#ffn3">&#8617;</a></li>
+	<li id="fn4">A pass-through, really, this link may in the future be replaced by using Gevent&#39;s Socket.IO implementation since at this time only one method is shared between each client and server pair. <a href="#ffn4">&#8617;</a></li>
+	<li id="fn5">Application entities represent actively running waveforms. <a href="#ffn5">&#8617;</a></li>
+	<li id="fn6">FRONTEND Interfaces is one example. <a href="#ffn6">&#8617;</a></li>
+	<li id="fn7">BULKIO is an example of a <code>values</code> stream. <a href="#ffn7">&#8617;</a></li>
+	<li id="fn8">If a change from one client causes the REDHAWK model to issue an event monitored by one of the proxy objects, the change is propagated to all attached clients. Otherwise the other clients will need to issue <code>update</code> messages to collect the changes. <a href="#ffn8">&#8617;</a></li>
+	<li id="fn9">Another option is to configure the Express.js app instance to serve an entirely different interface. The last leg of chain is still Socket.io, so one could radically alter what is served to the client without changing the rest of the server. <a href="#ffn9">&#8617;</a></li>
+	<li id="fn10">Recall, this is not necessarily the UUID from REDHAWK. In the case of Ports and Properties, concessions had to be made because neither is unique throughout the whole Domain. When in doubt, check the proxy class&#39;s <code>_getID</code> implementation for a clue. <a href="#ffn10">&#8617;</a></li>
+	<li id="fn11">Associative Array in JavaScript vernacular. See the bottom of <code>examples/custom/site/message_handlers.js</code> for an example. <a href="#ffn11">&#8617;</a></li>
+	<li id="fn12">The default behavior of Domains, Components, and Devices shows this behavior. Each sub-groups entities for cleaner organization at each level. <a href="#ffn12">&#8617;</a></li>
+	<li id="fn13">Per the HTML standard, the <code>id</code> must be unique throughout the DOM. <a href="#ffn13">&#8617;</a></li>
+	<li id="fn14">Per the HTML standard, <code>id</code> must be unique throughout a document and the default <code>add</code> applies the <code>rhid</code> as the <code>id</code> to the widget&#39;s container. <a href="#ffn14">&#8617;</a></li>
+	<li id="fn15">See <code>rashawk_ui/site/js/message_handlers.js</code> for an example of selectively inserting widgets for specific ports and properties -- in some cases purely to tap into the <code>configured</code> event. <a href="#ffn15">&#8617;</a></li>
+</ol></body>
+</html>

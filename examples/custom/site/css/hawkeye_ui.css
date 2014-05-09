@@ -1,0 +1,187 @@
+/* 
+    Copyright: 2014 Geon Technologies, LLC
+    
+    This file is part of HAWKEYE.
+    
+    HAWKEYE is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+ * HAWKEYE Control Panel UI CSS example: Custom
+ * 
+ * @author: Thomas Goodwin
+ * 
+ * @description:
+ *   The example_custom.html adds 2 containers: redhawk_device_managers
+ *   and redhawk_applications.  The example_custom_handlers.js specified
+ *   that all domain_container objects won't exist since all `domain` 
+ *   type messages are being dropped (null contents).  It further 
+ *   specified that all Device Managers and Applications will be have
+ *   their parent IDs overridden by the 2 new containers, respectively.
+ * 
+ *   The net effect would be seeing all Applications and Device Managers
+ *   present in several Domains without concern for which Domain might 
+ *   own them.
+ *   
+ *   A "refresh" button is added to Device Managers as well to pass an
+ *   'update' request to the gateway.
+ * 
+ *   For further 'style', the two container's headers are painted in 
+ *   REDHAWK logo red with a black drop shadow.
+ */
+
+body {
+    font-family: sans-serif;
+}
+
+/* 
+ * By default, hide every div but provide some properties to
+ * have a border and offest itself from within another container
+ * to build a hierarchy if unhidden (display not none).
+ */
+div { 
+    display:       none; 
+    position:      relative;
+    padding:       0.25em;
+    margin-left:   0.5em;
+    border:        1pt solid rgb(210, 210, 210);
+    border-radius: 4pt;
+    background:    rgba(235, 235, 235, 0.8);
+}
+
+/* 
+ * Primary container for the UI.  All others will be children of this
+ * div or descendents of those children unless rhtype is explicitly
+ * overridden by parentIDOverrides in the user's server settings.
+ */
+div#hawkeye_ui {
+    display: block;
+    max-width: 90%;
+    margin-left: auto; margin-right: auto; /* center */ 
+} /* Default UI container */
+div#hawkeye_ui > h1 {
+    position:relative;
+    line-height:0;
+    size: 18pt;
+} /* H1 properties if within the main container. */
+div#hawkeye_ui > div {
+    display:inline-block;
+    width: 47%;
+    vertical-align: text-top;
+} /* Ensures top-level div children (>) are visible. 
+     and the panels are side-by-side in the parent. */
+
+div#redhawk_applications > div,
+div#redhawk_device_managers > div {
+    display: block;
+} /* Ensure our 2 new containers are showing. */
+div#redhawk_applications > h1,
+div#redhawk_device_managers > h1 {
+    line-height:0;
+    text-size: 14pt;
+    color: #b6121a; 
+    text-shadow: 1pt 1pt 2pt black;
+} /* Reduce spacing around our H1's and set size to 14pt
+    then set the color to REDHAWK's logo red with a slight
+    drop-shadow in black. */
+div.device_manager_container > input.refresh {
+    float: right;
+} /* Position "Refresh" button to the right. */
+
+div.device_manager_container > label.show_hide {
+    line-height: 1.5em;
+} /* Add some line height so the button doesn't conflict with
+    sibling containers.
+
+/* The rest is exactly identical to the default CSS */
+
+
+label.show_hide {
+    user-select: none;
+} /* In many browsers this prevents the user from selecting text. */ 
+
+
+
+/*
+ * Devices and Components insert two additional rhtype_group class containers for
+ * grouping port and property children.  These containers also have the default format
+ * of a checkbox and a label, but this CSS will make these two groups lose the rounded
+ * border. 
+ */
+div.property_group,
+div.port_group {
+    display:       block;
+    border-radius: 0;
+} /* Make them visible, remove rounded edges. */
+
+
+/*
+ * Default port_container divs come populated with a label, start-stop button, and
+ * a table of class port_statistics.
+ * 
+ * This CSS takes the group properties above further by removing the background
+ * and formatting the table's first column to be bold with a hairline border.
+ */
+div.port_container {
+    display:       block;
+    background:    none;
+    border-radius: 0;
+}
+div.port_container input[type='button'] {
+    float: right;
+} /* Move submit button to the right. */
+div.port_container input[value='Start'] ~ table.port_statistics {
+    display: none;
+} /* Hide the table if we're not streaming */
+table.port_statistics {
+    display: table;
+    border-collapse: collapse;
+    width:      100%;
+} /* Collapse white-space in all borders */
+table.port_statistics,
+table.port_statistics tr td {
+    border: 1px solid #005581;
+    text-align: right;
+} /* Add blue hairline border to the table and cells, right-align text. */
+table.port_statistics tr td:first-child {
+    font-weight: bold;
+    text-align: left;
+    width: 45%;
+} /* First column has bold text, left-align, column width 45% */
+
+
+/*
+ * Properties - These contain a form with: [text] [input] [submit*]
+ * if scalar values.  Otherwise it's a form with lists of those items.
+ * NOTE: *The submit button only exists if the property is readwrite 
+ *        or writeonly.
+ */
+div.property_container {
+    display: block;
+    border: none;
+    border-radius: 0;
+    background: none;
+} /* Show the block (if possible), remove border, etc. */
+form.property input {
+    float: right;
+} /* Slide all inputs to the right. */
+form.property ul, 
+form.property ol {
+    -webkit-margin-before:  0;
+    -webkit-margin-after:   0;
+    -webkit-padding-start: 10pt;
+} /* Remove spacing on lists. */
+form.property li {
+    line-height: 1.5em;
+    list-style: none;
+} /* Give enough room for text fields to float right w/o wierdness
+     also remove bullets/numbers */
