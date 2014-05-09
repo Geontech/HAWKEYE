@@ -22,11 +22,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 =======
 Author:  Thomas Goodwin
 
-Hawkeye is a Node.js-based server providing a streaming gateway to REDHAWK SDR systems.  This clean integration allows for event-driven user interfaces and control panels to be rapidly developed using the provided jQuery Widgets.
+HAWKEYE is a Node.js-based server providing a streaming gateway to REDHAWK SDR systems.  This clean integration allows for event-driven user interfaces and control panels to be rapidly developed using the provided jQuery Widgets.
 
 See more at:
 http://geontech.com/redhawk/hawkeye-user-interface/
 
 See the **Documentation** for details. 
 
-Extending the hawkeye_server is simple.  Duplicate examples/default or examples/custom and extend the site with more images, message_handlers.js, etc.  Whatever is required to flesh out the site.  You can then `npm install` prior to `node app` for the first time from your path.
+Extending the hawkeye is simple.  Duplicate examples/default or examples/custom and extend the site with more images, message_handlers.js, etc.  Whatever is required to flesh out the site.  You can then `npm install` prior to `node app` for the first time from your path.
