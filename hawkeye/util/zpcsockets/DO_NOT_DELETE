@@ -1,0 +1,1 @@
+Do not delete zpcsockets.  The gateway-node interface via ZeroRPC requires this folder to exist.
