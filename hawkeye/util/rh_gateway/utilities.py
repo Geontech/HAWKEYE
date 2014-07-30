@@ -31,7 +31,7 @@ def indicesUniqueOnKeys(dictlista, dictlistb, keys):
         for db in dictlistb:
             match = True
             for key in keys:
-                if da[key] != da[key]:
+                if da[key] != db[key]:
                     match = False;
                     break
             if match:
