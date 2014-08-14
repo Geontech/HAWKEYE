@@ -38,10 +38,9 @@ Core definitions for the gateway, messaging, and proxies.
  *        rhname: '',               rhname: 'domain_name',
  *        more: {} }                more:   {} }, ..., {}]
 """
-def RH_Message(change='', rhtype='', rhid='', rhname='', more={'parentID':''}):
-    msg = {"change":change, "rhtype":rhtype, "rhid":rhid, "rhname":rhname, "more":more}
-    if ('parentID' not in msg['more'].keys()):
-        msg.update({'parentID': ''})
+def RH_Message(change='', rhtype='', rhid='', rhname='', more={}):
+    msg = {"change":change, "rhtype":rhtype, "rhid":rhid, "rhname":rhname, "more":{'parentID':''}}
+    msg['more'].update(more)
     return msg
 
 
