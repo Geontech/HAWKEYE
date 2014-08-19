@@ -98,7 +98,6 @@ NOTE: 1) Object obtained from dev/comp._propertySet[index].
 class Property(Proxy_Base):
     def _finish_init_(self):
         self._nextValue = None
-        pass
     
     @property
     def _getID(self):
@@ -118,13 +117,15 @@ class Property(Proxy_Base):
                                 'access': self._obj.mode})
         return msg
     
+    # Periodic task has 2 tasks: If a next value exists, configure it.  In any case, send an update.
+    # the update either confirms the value was accepted or proves it was rejected (via the UI).
     def _doPeriodicTask(self):
-        # Periodic task sets a new value and pushes it.
         try:
-            print("Setting property value..."); sys.stdout.flush()
-            self._obj.configureValue(self._nextValue)
-            self._nextValue = None
-            print("Successfully set value."); sys.stdout.flush()
+            if None != self._nextValue:
+                print("Setting property value..."); sys.stdout.flush()
+                self._obj.configureValue(self._nextValue)
+                self._nextValue = None
+                print("Successfully set value."); sys.stdout.flush()
             
         except Exception as e:
             print("Failed to set property type: " + self._obj.type); sys.stdout.flush()
@@ -132,17 +133,28 @@ class Property(Proxy_Base):
             
         finally:
             # Kick out an update to the client.
-            self.sendMessages([self.getMessage('update')])
+            if self._streaming():
+                self.sendMessages([self.getMessage('stream')])
+            else:
+                self.sendMessages([self.getMessage('update')])
     
     def _processThisMessage(self, message):
         if ('update' == message['change']):
             # Set the property.
             self._nextValue = self._coerceValue(message['more']['value'])
-            self.doPeriodicTaskOnceAfter(1.0)
+            # Emit delayed acknowledgement
+            if not self._streaming():
+                self.doPeriodicTaskOnceAfter(1.0)
+        elif ('start' == message['change']) and not self._streaming:
+            self._start()
+            return [self.getMessage('stream')]
+        elif ('stop' == message['change']) and self._streaming:
+            self._stop()
+            return [self.getMessage('update')]
         # default response
         return []
     
-    #FIXME: struct, sequence, etc. do not work.
+    # FIXME: struct, sequence, etc. do not work.
     def _coerceValue(self, newValue):
         if ('struct' == self._obj.type):
             return newValue
@@ -153,3 +165,19 @@ class Property(Proxy_Base):
         else:
             return ossie_prop.to_pyvalue(newValue, self._obj.type)
         
+    def _streaming(self):
+        return (None != self._greenlet)
+    
+    def _start(self):
+        self.doPeriodicTask()
+    
+    def _stop(self):
+        self.stopPeriodicTask()
+
+    def _cleanUp(self):
+        if (self._streaming):
+            try:
+                self._stop()
+            except:
+                # FIXME: come up with a way to clean-exit on a failed stream.
+                pass 
