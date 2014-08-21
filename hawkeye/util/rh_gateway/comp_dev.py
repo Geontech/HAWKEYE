@@ -133,7 +133,7 @@ class Property(Proxy_Base):
             
         finally:
             # Kick out an update to the client.
-            if self._streaming():
+            if self._streaming:
                 self.sendMessages([self.getMessage('stream')])
             else:
                 self.sendMessages([self.getMessage('update')])
@@ -143,7 +143,7 @@ class Property(Proxy_Base):
             # Set the property.
             self._nextValue = self._coerceValue(message['more']['value'])
             # Emit delayed acknowledgement
-            if not self._streaming():
+            if not self._streaming:
                 self.doPeriodicTaskOnceAfter(1.0)
         elif ('start' == message['change']) and not self._streaming:
             self._start()
@@ -164,7 +164,8 @@ class Property(Proxy_Base):
             return newValue
         else:
             return ossie_prop.to_pyvalue(newValue, self._obj.type)
-        
+    
+    @property    
     def _streaming(self):
         return (None != self._greenlet)
     
