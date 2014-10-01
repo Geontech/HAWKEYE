@@ -27,7 +27,7 @@ from ossie.cf import CF
 from bulkio.bulkioInterfaces import BULKIO__POA
 from omniORB import CORBA
 
-import string, gevent, sys, json
+import string, sys, json
 from Queue import Queue
 from threading import Lock
 
