@@ -29,7 +29,7 @@ from ossie.utils import redhawk
 from ossie.utils.redhawk.channels import ODMListener
 from ossie.utils.weakmethod import WeakBoundMethod
 
-import gevent, string, sys
+import time, string, sys
 
 
 # REDHAWK Domain object.
@@ -73,12 +73,12 @@ class Domain(Proxy_Base):
             self._odm.connect(self._obj)
             self._odm.deviceManagerAdded.addListener(WeakBoundMethod(self.__ODM_Added))
             self._odm.deviceManagerRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
-            self._odm.deviceAdded.addListener(WeakBoundMethod(self.__ODM_Added))
-            self._odm.deviceRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
-            self._odm.serviceAdded.addListener(WeakBoundMethod(self.__ODM_Added))
-            self._odm.serviceRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
-            self._odm.applicationFactoryAdded.addListener(WeakBoundMethod(self.__ODM_Added))
-            self._odm.applicationFactoryRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
+            #self._odm.deviceAdded.addListener(WeakBoundMethod(self.__ODM_Added))
+            #self._odm.deviceRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
+            #self._odm.serviceAdded.addListener(WeakBoundMethod(self.__ODM_Added))
+            #self._odm.serviceRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
+            #self._odm.applicationFactoryAdded.addListener(WeakBoundMethod(self.__ODM_Added))
+            #self._odm.applicationFactoryRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
             self._odm.applicationAdded.addListener(WeakBoundMethod(self.__ODM_Added))
             self._odm.applicationRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
         except:
@@ -100,7 +100,7 @@ class Domain(Proxy_Base):
      *  respectively.
     """        
     def __ODM_Added(self, evt):
-        gevent.sleep(2)
+        time.sleep(2)
         rhtype = string.lower("{0}".format(evt.sourceCategory))
         if ('device_manager' == rhtype):
             for dm in self._obj.devMgrs:
