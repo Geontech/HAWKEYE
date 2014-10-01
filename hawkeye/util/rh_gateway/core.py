@@ -58,8 +58,8 @@ class Proxy_Base(object):
         _id is the REDHAWK-unique ID of this object.
         _name is the REHAWK instance's "name" (e.g., Device.name, Port._name, etc.)
         _domain_id is the ID of the REDHAWK Domain to which this entity belongs.
-        _greenlet is a handler to a gevent thread, if running, for periodic tasks
-        _greenletPeriodSec is the period, in seconds, of that task.
+        _timer is a handle to a timed task thread, if running, for periodic tasks
+        _timerPeriodSec is the period, in seconds, of that task.
     
     @param rh_obj The REDHAWK Object for this object.
     @param rh_parent The Proxy_Base subclass that is the parent (container) 
@@ -94,8 +94,8 @@ class Proxy_Base(object):
     @property
     def _log(self):
         if not self._logger:
-            self._logger = logging.getLogger(type(self))
-            self._logger.setLevel(logging.INFO)
+            logging.getLogger(type(self).__name__).setLevel(logging.INFO)
+            self._logger = logging
         return self._logger
     
     """
@@ -181,8 +181,8 @@ class Proxy_Base(object):
         return msgs
     
     """
-    Do not override.  Call this method to kick-off a periodic task (_greenlet) timed to 
-    the update rate specified by _greenletPeriodSec.  This method calls _doPeriodicTask()
+    Do not override.  Call this method to kick-off a periodic task (_timer) timed to 
+    the update rate specified by _timerPeriodSec.  This method calls _doPeriodicTask()
     and re-schedules the event.
     """
     def doPeriodicTask(self):
@@ -202,7 +202,7 @@ class Proxy_Base(object):
         self._oneshotTimer.start()
     
     """
-    Do not override.  Simply stops (kills) the greenlet running the periodic task.
+    Do not override.  Simply stops (kills) the timer running the periodic task.
     """
     def stopPeriodicTask(self):
         if (None != self._timer):
@@ -228,9 +228,8 @@ class Proxy_Base(object):
     
     
     """
-    Wrapper for the outbox to ensure the gevent greenlet sleeps before
-    async transmissions back to the client.  This should provent
-    ZeroRPC from having a timeout if the Queue deadlocks.
+    Wrapper for the outbox to ensure the timer sleeps before
+    async transmissions back to the client.  
     """
     def sendMessages(self, msgarray):
         for m in msgarray:
@@ -294,4 +293,4 @@ class Proxy_Base(object):
         return
 
 if __name__=="__main__":
-    logging = logging.getLogger(logging.INFO)
+    logging.getLogger().setLevel(logging.INFO)
