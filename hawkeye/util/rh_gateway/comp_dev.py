@@ -38,7 +38,7 @@ class CompDev_Base(Proxy_Base):
     def _finish_init_(self):
         for p in self._obj.ports:
             self._children.append(Port.getPort(p, self, self._outbox))
-        for prop in self._obj._propertySet:
+        for prop in self._obj._getPropertySet():
             try:
                 pp = Property(prop, self, self._outbox)
                 self._children.append(pp)
@@ -167,7 +167,7 @@ class Property(Proxy_Base):
     
     @property    
     def _streaming(self):
-        return (None != self._greenlet)
+        return (None != self._timer)
     
     def _start(self):
         self.doPeriodicTask()
