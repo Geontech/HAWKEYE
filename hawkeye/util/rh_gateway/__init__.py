@@ -21,9 +21,183 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 @summary: The gateway module provides access to the REDHAWK Model via proxy objects
   to handle the specifics of each entity type (Domain vs. Device, etc.).
 """
+from core import RH_Message
+from domain import Domain
+from utilities import *
 
-import core
-from core import *
+from ossie.utils import redhawk
 
-import rh_gateway
-from rh_gateway import *
+import logging, time, threading
+from Queue import Queue
+
+"""
+Class for acting as the main bridge to any Domain in the naming service.
+
+Instantiate this class and use start() and 
+stop() to manage the traffic interface.  Messages can be sent/received using
+sendMessages() and getAllMessages() (for bulk send/receive).
+"""
+class RH_Gateway(object):
+    def __init__(self, maxQueueSizes=500):
+        logging.getLogger(type(self).__name__).setLevel(logging.INFO)
+        self._log = logging
+        
+        if 100 > maxQueueSizes:
+            maxQueueSizes = 100
+            self._log.warning("maxQueueSizes should be greater than 100, but something your system can support.")
+            
+        self._inbox = Queue(maxQueueSizes)
+        self._outbox = Queue(maxQueueSizes)
+        
+        # List of domains being maintained for incoming messages
+        self._domains = []
+        
+        # Scanning for domain changes and resulting list.
+        self._domainListMessages = []
+        self._domainScanningPeriod = 1
+        self._domainScanningTimer = None
+        
+        self._runLock = threading.Lock()
+        self._running = False
+        self._runThread = None
+        self._runPeriod = 0.1
+        
+        self._log.info("RH Gateway initialized successfully.");
+    
+    def __del__(self):
+        try:
+            self._log.info("RH Gateway closing down...")
+            self.stop()
+            for d in self._domains:
+                d.cleanUp()
+            self._domains = []
+        except:
+            self._log.error("RH Gateway caught exception on shutdown")
+            raise
+    
+    """
+    Returns 'True' if message was sent, 'False' otherwise.
+    """
+    def sendMessages(self, messages):
+        if not type(messages) == list:
+            messages = [messages]
+            
+        for m in messages:
+            if not self._inbox.full():
+                self._inbox.put(m)
+            else:
+                self._log.warning("Incoming queue is full.  " + 
+                    "Increase the size, send fewer, or run the RH Gateway "+
+                    "on a faster system.")
+                break
+    
+    """
+    Returns a list of RH Messages (if any exist) or an empty list.
+    """
+    def getMessages(self):
+        messages = []
+        while not self._outbox.empty():
+            messages.append(self._outbox.get())
+        return messages
+    
+    @property
+    def running(self):
+        self._runLock.acquire()
+        v = self._running
+        self._runLock.release()
+        return v
+    
+    @running.setter
+    def running(self, val):
+        self._runLock.acquire()
+        self._running = val
+        self._runLock.release()
+    
+    def start(self):
+        self.running = True
+        self._domainScanningTimer = threading.Timer(
+            self._domainScanningPeriod, 
+            self._domainScan)
+        self._domainScanningTimer.start()
+        self._runThread = threading.Thread(target=self._runLoop)
+        self._runThread.daemon = True
+        self._runThread.start()
+    
+    def stop(self):
+        if self._domainScanningTimer:
+            self._domainScanningTimer.cancel()
+            self._domainScanningTimer = None
+        self.running = False
+        if self._runThread:
+            self._runThread.join(5)
+            self._runThread = None
+    
+    """
+    Pushes messages from the inbox into the Domains; transfers any responses 
+    to the outbox queue.
+    """
+    def _runLoop(self):
+        while self.running:
+            if not self._inbox.empty():
+                msg = self._inbox.get()
+                retMessages = []
+                # Attempt to forward the message to each domain.
+                # FIXME: This does not account for identical IDs in different domains.
+                for d in self._domains:
+                    d.updateDescendentIDs() # Costly... find a better way.
+                    retMessages += d.processMessage(msg)
+                # Push responses
+                [self._outbox.put(o) for o in retMessages]
+            time.sleep(self._runPeriod)
+    
+    # Scans the domain for changes, creates instances, and queues the next scan..
+    def _domainScan(self):
+        newList = self._getMessagesForDomainListing('add')
+        adds, removes = splitDictLists(newList, 
+            self._domainListMessages, 
+            RH_Message().keys())
+        
+        # Removals
+        ids = [r['rhid'] for r in removes]
+        indices = []
+        if (0 < len(ids)):
+            for i, d in enumerate(self._domains):
+                if (d.getID in ids):
+                    d.cleanUp()
+                    indices.append(i)
+            self._domains = [d for i, d in enumerate(self._domains) if i not in indices]
+        
+        # Additions
+        for a in adds:
+            self._domains.append(Domain(redhawk.attach(a['rhname']), # Return redhawk domain instance
+                                        '',                          # No parent ID
+                                        self._outbox))               # Using the global outbox
+        
+        self._domainListMessages = newList;
+        self._domainScanningTimer = threading.Timer(
+            self._domainScanningPeriod, 
+            self._domainScan)
+        self._domainScanningTimer.start()
+    
+    
+    """
+    Gets a list of active REDHAWK Domains and returns each as a message.
+    """
+    def _getMessagesForDomainListing(self, change='add'):
+        msgs = []
+        
+        try:
+            names = redhawk.scan()
+            for name in names:
+                d = redhawk.attach(name)
+                id = d._get_identifier()
+                msgs.append(RH_Message(change = change, 
+                                       rhtype = 'domain', 
+                                       rhid   = id, 
+                                       rhname = name))
+        except:
+            self._log.error("Caught exception while scanning REDHAWK CORE...never good.")
+            raise
+            
+        finally:
+            return msgs
