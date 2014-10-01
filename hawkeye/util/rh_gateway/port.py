@@ -150,7 +150,7 @@ between the RH Model's thread and the main greenlet containing the Gateway.
 Because of this, the BULKIO port runs a synchronous "pull" from the
 stream helper which will return all messages received in the last interval.
 
-The interval is set by to _greenletPeriodSec which is not necessarily
+The interval is set by to _timerPeriodSec which is not necessarily
 an accurate/precise timer, but during testing even 0.000001 only yielded
 a single packet delivered per pull period with a stream pushing >2MB of
 samples in each packet.  Ultimately the inscessant "getMessages" call 
@@ -161,7 +161,7 @@ the client.
 class Port_BULKIO(Port):
     def _finish_init_(self):
         self._isStreaming = False
-        self._greenletPeriodSec = 0.25
+        self._timerPeriodSec = 0.25
         
         if ('Uses' == self._obj._direction):
             datatype = self._obj._using.filename
@@ -246,11 +246,11 @@ class Port_FRONTEND(Port):
             return Port_FRONTEND(obj, parent, outbox)
     
     def _finish_init_(self):
-        self._greenletPeriodSec = 0.25
+        self._timerPeriodSec = 0.25
         
     @property
     def _streaming(self):
-        return (None != self._greenlet)
+        return (None != self._timer)
     
     def _start(self):
         self.doPeriodicTask()
