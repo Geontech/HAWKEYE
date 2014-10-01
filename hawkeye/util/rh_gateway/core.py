@@ -43,8 +43,7 @@ def RH_Message(change='', rhtype='', rhid='', rhname='', more={}):
     msg['more'].update(more)
     return msg
 
-
-import sys, gevent
+import sys, time, logging, threading
 
 # Abstract base class for proxies
 class Proxy_Base(object):    
@@ -82,14 +81,22 @@ class Proxy_Base(object):
         self._id = ''
         self._name = ''
         self._domain_id = ''
-        self._greenlet = None
-        self._oneshotGreenlet = None
-        self._greenletPeriodSec = 1.0
+        self._timer = None
+        self._oneshotTimer = None
+        self._timerPeriodSec = 1.0
+        
+        self._logger = None
         
         # Announce creation and then finish init.
         self.sendMessages([self.getMessage('add')])
-        # FIXME: self._outbox.put([self.getMessage('add')])
         self._finish_init_()
+    
+    @property
+    def _log(self):
+        if not self._logger:
+            self._logger = logging.getLogger(type(self))
+            self._logger.setLevel(logging.INFO)
+        return self._logger
     
     """
     Fetch the domain ID, from the parent if necessary.
@@ -163,7 +170,6 @@ class Proxy_Base(object):
             ids += c.allDescendentIDs;
         self.allDescendentIDs = ids;
     
-    
     """
     Do not override.  Method does an "update from here" message starting at this point in the 
     REDHAWK Hierarchy and out towards descendents.
@@ -181,25 +187,27 @@ class Proxy_Base(object):
     """
     def doPeriodicTask(self):
         self._doPeriodicTask()
-        self._greenlet = gevent.spawn_later(self._greenletPeriodSec, self.doPeriodicTask)
+        self._timer = threading.Timer(self._timerPeriodSec, self.doPeriodicTask)
+        self._timer.start()
     
     """
     Do not override.  Call this method to fire _doPeriodicTask() once after some number
     of seconds (which can be a fraction)
     """
     def doPeriodicTaskOnceAfter(self, sec):
-        if (None != self._oneshotGreenlet):
-            self._oneshotGreenlet.kill()
+        if (None != self._oneshotTimer):
+            self._oneshotTimer.cancel()
             
-        self._oneshotGreenlet = gevent.spawn_later(sec, self._doPeriodicTask)
+        self._oneshotTimer = threading.Timer(sec, self._doPeriodicTask)
+        self._oneshotTimer.start()
     
     """
     Do not override.  Simply stops (kills) the greenlet running the periodic task.
     """
     def stopPeriodicTask(self):
-        if (None != self._greenlet):
-            self._greenlet.kill(block=False)
-            self._greenlet = None
+        if (None != self._timer):
+            self._timer.cancel()
+            self._timer = None
     
     """
     Do not override.  Ensures the following:
@@ -211,13 +219,12 @@ class Proxy_Base(object):
     def cleanUp(self):
         self._cleanUp()
         self.stopPeriodicTask()
-        if (None != self._oneshotGreenlet):
-            self._oneshotGreenlet.kill(block=False)
+        if (None != self._oneshotTimer):
+            self._oneshotTimer.cancel()
         for c in self._children:
             c.cleanUp()
         self._children = []
         self.sendMessages([self.getMessage('remove')])
-        # FIXME: self._outbox.put([self.getMessage('remove')])
     
     
     """
@@ -226,9 +233,9 @@ class Proxy_Base(object):
     ZeroRPC from having a timeout if the Queue deadlocks.
     """
     def sendMessages(self, msgarray):
-        if (0 < len(msgarray)):
-            self._outbox.put(msgarray)
-        gevent.sleep(0)
+        for m in msgarray:
+            self._outbox.put(m)
+        time.sleep(0)
     
     """
     --- IMPLEMENT THE FOLLOWING ---
@@ -285,3 +292,6 @@ class Proxy_Base(object):
     """
     def _cleanUp(self):
         return
+
+if __name__=="__main__":
+    logging = logging.getLogger(logging.INFO)
