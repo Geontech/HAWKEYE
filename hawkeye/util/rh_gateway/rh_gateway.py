@@ -24,8 +24,7 @@ from utilities import *
 
 from ossie.utils import redhawk
 
-import sys, json, signal, string, os, logging
-from threading import Thread
+import logging, time, threading
 from Queue import Queue
 
 """
@@ -37,8 +36,8 @@ sendMessages() and getAllMessages() (for bulk send/receive).
 """
 class RH_Gateway(object):
     def __init__(self, maxQueueSizes=500):
-        self._log = logging.getLogger(type(self))
-        self._log.setLevel(logging.INFO)
+        logging.getLogger(type(self).__name__).setLevel(logging.INFO)
+        self._log = logging
         
         if 100 > maxQueueSizes:
             maxQueueSizes = 100
@@ -53,9 +52,12 @@ class RH_Gateway(object):
         # Scanning for domain changes and resulting list.
         self._domainListMessages = []
         self._domainScanningPeriod = 1
+        self._domainScanningTimer = None
         
+        self._runLock = threading.Lock()
         self._running = False
         self._runThread = None
+        self._runPeriod = 0.1
         
         self._log.info("RH Gateway initialized successfully.");
     
@@ -95,27 +97,44 @@ class RH_Gateway(object):
             messages.append(self._outbox.get())
         return messages
     
+    @property
+    def running(self):
+        self._runLock.acquire()
+        v = self._running
+        self._runLock.release()
+        return v
+    
+    @running.setter
+    def running(self, val):
+        self._runLock.acquire()
+        self._running = val
+        self._runLock.release()
+    
     def start(self):
+        self.running = True
         self._domainScanningTimer = threading.Timer(
             self._domainScanningPeriod, 
             self._domainScan)
         self._domainScanningTimer.start()
-        self._runThread = Thread(target=self._runLoop)
+        self._runThread = threading.Thread(target=self._runLoop)
+        self._runThread.daemon = True
         self._runThread.start()
     
     def stop(self):
         if self._domainScanningTimer:
             self._domainScanningTimer.cancel()
             self._domainScanningTimer = None
-        self._running = False
+        self.running = False
+        if self._runThread:
+            self._runThread.join(5)
+            self._runThread = None
     
     """
     Pushes messages from the inbox into the Domains; transfers any responses 
     to the outbox queue.
     """
     def _runLoop(self):
-        self._running = True
-        while self._running:
+        while self.running:
             if not self._inbox.empty():
                 msg = self._inbox.get()
                 retMessages = []
@@ -124,11 +143,9 @@ class RH_Gateway(object):
                 for d in self._domains:
                     d.updateDescendentIDs() # Costly... find a better way.
                     retMessages += d.processMessage(msg)
-
-                for o in retMessages:
-                    self._outbox.put(o)
-            time.sleep(0)
-        self._runThread = None
+                # Push responses
+                [self._outbox.put(o) for o in retMessages]
+            time.sleep(self._runPeriod)
     
     # Scans the domain for changes, creates instances, and queues the next scan..
     def _domainScan(self):
@@ -157,6 +174,7 @@ class RH_Gateway(object):
         self._domainScanningTimer = threading.Timer(
             self._domainScanningPeriod, 
             self._domainScan)
+        self._domainScanningTimer.start()
     
     
     """
@@ -181,5 +199,8 @@ class RH_Gateway(object):
         finally:
             return msgs
 
-if __name__ == '__main__':
-    logging = logging.getLogger(logging.INFO)
+"""
+For testing
+"""        
+if __name__ == '__main__':        
+    logging.getLogger('TEST_'+__file__).setLevel(logging.INFO)
