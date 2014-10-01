@@ -27,7 +27,7 @@ from application import Application
 
 from ossie.utils import redhawk
 from ossie.utils.redhawk.channels import ODMListener
-from ossie.utils.weakmethod import WeakBoundMethod
+from ossie.utils.weakobj import WeakBoundMethod
 
 import time, string, sys
 
