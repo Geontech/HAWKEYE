@@ -62,6 +62,8 @@ class RH_Gateway(object):
         self._runThread = None
         self._runPeriod = 0.1
         
+        self._getCallback = None
+        
         self._log.info("RH Gateway initialized successfully.");
     
     def __del__(self):
@@ -74,6 +76,13 @@ class RH_Gateway(object):
         except:
             self._log.error("RH Gateway caught exception on shutdown")
             raise
+    
+    """
+    Assign a callback for "getMessages" which will empty the out-going queue
+    into the callback when it is non-empty.
+    """
+    def useCallbackForGet(self, callback):
+        self._getCallback = callback
     
     """
     Returns 'True' if message was sent, 'False' otherwise.
@@ -148,6 +157,11 @@ class RH_Gateway(object):
                     retMessages += d.processMessage(msg)
                 # Push responses
                 [self._outbox.put(o) for o in retMessages]
+                
+            # Forward outbox to callback, if created.
+            if not self._outbox.empty() and self._getCallback:
+                self._getCallback(self.getMessages())
+                
             time.sleep(self._runPeriod)
     
     # Scans the domain for changes, creates instances, and queues the next scan..
