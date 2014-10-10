@@ -3,7 +3,7 @@
     "description" : "HAWKEYE Control Panel Server",
     "author"      : "Geon Technologies <info@geontech.com>",
     "contributors": ["Thomas Goodwin <btgoodwin@geontech.com>"],
-    "version"     : "0.1.0",
+    "version"     : "0.1.1",
     "private"     : true,
     "main"        : "app.js",
     "keywords"    : ["HAWKEYE", "REDHAWK", "SCA", "http", "server"],
