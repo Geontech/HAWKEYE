@@ -68,11 +68,11 @@ class Proxy_Base(object):
     """
     def __init__(self, rh_obj=None, rh_parent=None, outbox=None):
         if (None == rh_obj):
-            raise Proxy_Base("Unable to create object without a redhawk reference object.")
+            raise Exception("Unable to create object without a redhawk reference object.")
         elif (None == rh_parent):
-            raise Proxy_Base("Unable to create object without a redhawk parent Proxy object.")
+            raise Exception("Unable to create object without a redhawk parent Proxy object.")
         elif (None == outbox):
-            raise Proxy_Base("Unable to create object without a Queue outbox.")
+            raise Exception("Unable to create object without a Queue outbox.")
         
         self._obj = rh_obj
         self._parent = rh_parent
@@ -94,8 +94,8 @@ class Proxy_Base(object):
     @property
     def _log(self):
         if not self._logger:
-            logging.getLogger(type(self).__name__).setLevel(logging.INFO)
-            self._logger = logging
+            self._logger = logging.getLogger(type(self).__name__)
+            self._logger.setLevel(logging.INFO)
         return self._logger
     
     """
@@ -246,14 +246,14 @@ class Proxy_Base(object):
     @return A single RH_Message describing this object using any specified change.
     """
     def getMessage(self, change='update'):
-        raise Proxy_Base("Class did not implement _getMessage")
+        raise Exception("Class did not implement _getMessage")
     
     """
     Method only called once at __init__.  Should finish init of the object and populate 
     _children with any Proxy_Base objects created in the process.
     """
     def _finish_init_(self):
-        raise Proxy_Base("Class did not implement _finish_init_")
+        raise Exception("Class did not implement _finish_init_")
     
     
     """
