@@ -82,7 +82,7 @@ class Domain(Proxy_Base):
             self._odm.applicationAdded.addListener(WeakBoundMethod(self.__ODM_Added))
             self._odm.applicationRemoved.addListener(WeakBoundMethod(self.__ODM_Removed))
         except:
-            raise Domain('Unable to connect to domain to listeners')
+            raise Exception('Unable to connect to domain to listeners')
     
     """
      *  ODM Event Callbacks
