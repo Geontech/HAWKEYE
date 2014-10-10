@@ -267,15 +267,23 @@ jQuery.noConflict();
     
     /* COMMON ANIMATION/BEHAVIORS */    
     /* All show_hide label tags will toggle subsequent siblings for hide/show. */
-    $(document).on('click', 'label.show_hide', function () {
-        var $sibs = $(this).siblings('div');
+    function toggleSiblings (obj, selector) {
+        var $sibs = $(obj).siblings(selector);
         if ($sibs.eq(0).is(":visible")) {
             $sibs.hide('fast');
         }
         else {
             $sibs.show('fast');
         }
-    });
+    };
+    $(document)
+        .on('click', 'label.show_hide', function () {
+            toggleSiblings(this, 'div');
+        })
+        .on('click', 'label.rh_prop_label', function () {
+            toggleSiblings(this, 'ol');
+            toggleSiblings(this, 'ul');
+        });
     
    
    
@@ -603,7 +611,7 @@ jQuery.noConflict();
                 
             return $li;
         },
-        // Function doesn ot modify the model.  Returns an input text object.
+        // Function does not modify the model.  Returns an input text object.
         _createInputField: function(name, value, readonly) {
             return $('<input>')
                 .addClass('property_values')
@@ -641,7 +649,7 @@ jQuery.noConflict();
                     this.$form.addClass('rh_prop_structsequence');
                     var keys = Object.keys(newMessage.more.value[0]);
                     for (var i in newMessage.more.value) {
-                        var $li = $('<li>').append($('<label>').html("Index " + i).addClass('show_hide'));
+                        var $li = $('<li>').append($('<label>').html("Index " + i).addClass('rh_prop_label'));
                         var $ul = $('<ul>').appendTo($li).hide();
                         for (var ki in keys) {
                             $ul.append(this._createListItem(
