@@ -39,8 +39,8 @@ sendMessages() and getAllMessages() (for bulk send/receive).
 """
 class RH_Gateway(object):
     def __init__(self, maxQueueSizes=500):
-        logging.getLogger(type(self).__name__).setLevel(logging.INFO)
-        self._log = logging
+        self._log = logging.getLogger(type(self).__name__)
+        self._log.setLevel(logging.INFO)
         
         if 100 > maxQueueSizes:
             maxQueueSizes = 100
