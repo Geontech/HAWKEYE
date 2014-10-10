@@ -127,7 +127,7 @@ function RH_Session (socketIn) {
     var socket = socketIn;
     var p = path.relative(process.cwd(), __dirname);
     var addr = 'ipc://' + p + '/zpcsockets/' + String(socket.id) + '.sock';
-    var gateway = spawn('python', [p + '/rh_gateway/rh_gateway.py', addr]);
+    var gateway = spawn('python', ['-u', p + '/zerorpc_front.py', addr]);
     
     var client = new zerorpc.Client();
     client.connect(addr + '_rh2node');
