@@ -42,7 +42,7 @@ class Port(Proxy_Base):
     @staticmethod
     def getPort(obj=None, parent=None, outbox=None):
         if (None == obj) or (None==parent) or (None == outbox):
-            raise Port("Port cannot be created without its RH instance, parent, and an outbox")
+            raise Exception("Port cannot be created without its RH instance, parent, and an outbox")
         
         category = obj._interface.nameSpace # FRONTEND, BULKIO, CF, etc.
         if (category == 'BULKIO'):
@@ -182,9 +182,11 @@ class Port_BULKIO(Port):
             self._helper = StreamHelper_Float(self)
         elif('bio_dataDouble' == datatype):
             self._helper = StreamHelper_Double(self)
+        elif('bio_dataFile' == datatype):
+            self._helper = StreamHelper_DataFile(self)
         else:
             # FIXME: Need more handlers...
-            raise Port_BULKIO("No stream handler for this type: " + datatype)
+            raise Exception("No stream handler for this type: " + datatype)
         
         orb = CORBA.ORB_init()
         self._poa = orb.resolve_initial_references("RootPOA")
@@ -238,7 +240,7 @@ class Port_FRONTEND(Port):
     @staticmethod
     def getPort(obj=None, parent=None, outbox=None):
         if (None == obj) or (None==parent) or (None == outbox):
-            raise Port("Port cannot be created without its RH instance, parent, and an outbox")
+            raise Exception("Port cannot be created without its RH instance, parent, and an outbox")
         if ('GPS' == obj._interface.name):
             return Port_FRONTEND_GPS(obj, parent, outbox)
         else:
@@ -356,4 +358,7 @@ class StreamHelper_Float(BULKIO__POA.dataFloat, StreamHelper):
     pass
 
 class StreamHelper_Double(BULKIO__POA.dataDouble, StreamHelper):
+    pass
+
+class StreamHelper_DataFile(BULKIO__POA.dataFile, StreamHelper):
     pass
