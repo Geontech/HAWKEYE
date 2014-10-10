@@ -29,7 +29,7 @@
 // NOTE: These are the available options for the rh_cp_server.
 var DEFAULTS = { UserPort : 8888, 
                  Log_STDOUT : false,
-                 Log_STDERR : false  };
+                 Log_STDERR : false };
 
 module.exports = function (app, options) {
 
@@ -83,12 +83,12 @@ module.exports = function (app, options) {
         session = rh_session.getSessionForSocket(socket);
         if (settings.Log_STDERR) {
             session.mapSTDERRtoFunction( function(data) {
-                console.info('RH Gateway stderr: ' + data);
+                console.info(data);
             });
         }        
         if (settings.Log_STDOUT) {
             session.mapSTDOUTtoFunction( function(data) {
-                console.info('RH Gateway stdout: ' + data);
+                console.info(data);
             });
         }
     });
