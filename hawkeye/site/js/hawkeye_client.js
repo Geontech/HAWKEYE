@@ -601,12 +601,18 @@ jQuery.noConflict();
         },
         // Function does not modify the model.  Returns only a list object.
         _createListItem: function(name, value, rhidx, readonly) {
+            // If name is a nested ID, get the final name from the end and use it for the label
+            var n = name;
+            if (-1 < name.indexOf("::")) {
+                var n_array = name.split("::");
+                n = n_array[n_array.length - 1];
+            }
             var $item = this._createInputField(name, value, readonly);
             $item.attr('rhidx', rhidx);
             
             var $li = $('<li>')
                 .append($('<label>')        // Name of field in a label.
-                        .text(name))
+                        .text(n))
                 .append($item);
                 
             return $li;
