@@ -27,7 +27,10 @@ from utilities import *
 
 from ossie.utils import redhawk
 
-import logging, time, threading
+import logging
+import time
+import threading
+import traceback
 from Queue import Queue
 
 """
@@ -60,7 +63,7 @@ class RH_Gateway(object):
         self._runLock = threading.Lock()
         self._running = False
         self._runThread = None
-        self._runPeriod = 0.1
+        self._runPeriod = 0.25
         
         self._getCallback = None
         
@@ -74,7 +77,7 @@ class RH_Gateway(object):
                 d.cleanUp()
             self._domains = []
         except:
-            self._log.error("RH Gateway caught exception on shutdown")
+            self._log.error("RH Gateway caught exception on shutdown: {0}".format(traceback.format_exc()))
             raise
     
     """
@@ -210,7 +213,7 @@ class RH_Gateway(object):
                                        rhid   = id, 
                                        rhname = name))
         except:
-            self._log.error("Caught exception while scanning REDHAWK CORE...never good.")
+            self._log.error("Caught exception while scanning REDHAWK CORE: {0}".format(traceback.format_exc()))
             raise
             
         finally:
