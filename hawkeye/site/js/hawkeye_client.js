@@ -89,64 +89,74 @@ jQuery.noConflict();
     
     
     function processMessages(messages) {
-        messages = JSON.parse(messages);
-        messages.forEach( function(message) {
-            try {
-                switch (message.change) {
-                    case 'add':
-                        // Attempt a query.  
-                        //   If found: skip the message.  
-                        //   Else: attempt process it.
-                        var $awidget = $("#" + cleanRHID(message.rhid));
-                        if (0 == $awidget.length) {
-                            $awidget = getNewWidgetForMessage(message);
-                            if (null != $awidget) {
-                                var $parent = getParentFromMessage(message);
-                                $awidget.appendTo($parent);
-                                
-                                // Set hide/show relative to siblings if they exist.  If none exists,
-                                // hide the new widget, initially.
-                                var $sibs = $parent.siblings('div');
-                                if ($sibs.length) {
-                                    if ($sibs.eq(0).is(':visible')) {
-                                        $awidget.show('fast');
-                                    }
-                                    else {
-                                        $awidget.hide('fast');
+        try {
+            messages = JSON.parse(messages);
+            messages.forEach( function(message) {
+                try {
+                    switch (message.change) {
+                        case 'add':
+                            // Attempt a query.  
+                            //   If found: skip the message.  
+                            //   Else: attempt process it.
+                            var $awidget = $("#" + cleanRHID(message.rhid));
+                            if (0 == $awidget.length) {
+                                $awidget = getNewWidgetForMessage(message);
+                                if (null != $awidget) {
+                                    var $parent = getParentFromMessage(message);
+                                    $awidget.appendTo($parent);
+                                    
+                                    // Set hide/show relative to siblings if they exist.  If none exists,
+                                    // hide the new widget, initially.
+                                    var $sibs = $parent.siblings('div');
+                                    if ($sibs.length) {
+                                        if ($sibs.eq(0).is(':visible')) {
+                                            $awidget.show('fast');
+                                        }
+                                        else {
+                                            $awidget.hide('fast');
+                                        }
                                     }
                                 }
                             }
-                        }
-                        break;
-                    case 'remove':
-                        // Find and animate the removal of the element by its ID if found.
-                        var $widget = $("#" + cleanRHID(message.rhid));
-                        if ($widget.length) {
-                            // Let the widget process the last message as it's being removed.
-                            $widget.data("hawkeye-" + message.rhtype + "_container")
-                                      .configureMessage(message);
-                            $widget.hide('fast', function () {$widget.remove();});
-                        }
-                        break;
-                    case 'update':
-                    case 'stream':
-                        var $theWidget = $("#" + cleanRHID(message.rhid));
-                        if ($theWidget.length)
-                            $theWidget.data("hawkeye-" + message.rhtype + "_container")
-                                      .configureMessage(message);
-                        break;
-                    default:
-                        console.error("Unknown change type: " + message.change);
+                            break;
+                        case 'remove':
+                            // Find and animate the removal of the element by its ID if found.
+                            var $widget = $("#" + cleanRHID(message.rhid));
+                            if ($widget.length) {
+                                // Let the widget process the last message as it's being removed.
+                                $widget.data("hawkeye-" + message.rhtype + "_container")
+                                          .configureMessage(message);
+                                $widget.hide('fast', function () {$widget.remove();});
+                            }
+                            break;
+                        case 'update':
+                        case 'stream':
+                            var $theWidget = $("#" + cleanRHID(message.rhid));
+                            if ($theWidget.length)
+                                $theWidget.data("hawkeye-" + message.rhtype + "_container")
+                                          .configureMessage(message);
+                            break;
+                        default:
+                            console.error("Unknown change type in message: ");
+                            console.error(message);
+                    }
                 }
-            }
-            catch (error) {
-                console.error("ERROR: processing message" + JSON.stringify(message));
-                console.error("Stack:" + error.stack);
-                console.error(error);
-                return false;
-            }
-        });
-        return true;
+                catch (error) {
+                    console.error("ERROR: processing message");
+                    console.error(message);
+                    console.error("Stack:" + error.stack);
+                    console.error(error);
+                    return false;
+                }
+            });
+            return true;
+        }
+        catch (error) {
+            console.error("JSON Error in messages");
+            console.error(messages);
+            console.error("Stack: " + error.stack);
+        }
+        return false;
     };
     
     /*
@@ -684,6 +694,12 @@ jQuery.noConflict();
                                 newMessage.rhname, 
                                 newMessage.more.value, 
                                 readonly));
+            }
+            if (newMessage.change == 'stream') {
+                // Pulse the property_changed class
+                this.$form.toggleClass('property_changed');
+                var f = this.$form;
+                setTimeout(function() { $(f).toggleClass('property_changed', false); }, 1000);
             }
             
             if (!readonly) {
