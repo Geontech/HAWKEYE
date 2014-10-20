@@ -26,7 +26,10 @@ from port import Port
 import ossie.properties as ossie_prop
 from ossie.utils import redhawk
 
-import string, sys
+import string
+import threading
+import sys
+import json
 
 """
 Base class from which Component and Device derive since they're very similar.
@@ -98,6 +101,7 @@ NOTE: 1) Object obtained from dev/comp._propertySet[index].
 class Property(Proxy_Base):
     def _finish_init_(self):
         self._nextValue = None
+        self._previousJSON = ''
     
     @property
     def _getID(self):
@@ -132,9 +136,13 @@ class Property(Proxy_Base):
             print(e); sys.stdout.flush();
             
         finally:
-            # Kick out an update to the client.
+            # Kick out an update to the client if the message is different.
             if self._streaming:
-                self.sendMessages([self.getMessage('stream')])
+                update = self.getMessage('stream')
+                updatedJSON = json.dumps(update)
+                if self._previousJSON != updatedJSON:
+                    self.sendMessages([update])
+                self._previousJSON = updatedJSON
             else:
                 self.sendMessages([self.getMessage('update')])
     
@@ -146,7 +154,8 @@ class Property(Proxy_Base):
             if not self._streaming:
                 self.doPeriodicTaskOnceAfter(1.0)
         elif ('start' == message['change']) and not self._streaming:
-            self._start()
+            self._timer = threading.Timer(1.0, self._start)
+            self._timer.start()
             return [self.getMessage('stream')]
         elif ('stop' == message['change']) and self._streaming:
             self._stop()
