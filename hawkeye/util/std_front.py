@@ -34,6 +34,7 @@ import signal
 import fcntl
 import os
 import logging
+import traceback
 
 """
 This worker attempts to readline() from STDIN and pass any resulting messages
@@ -44,33 +45,39 @@ def inboundWorker(callback):
     while True:
         wait_read(sys.stdin.fileno())
         line = sys.stdin.readline()
-        try:
-            messages = json.loads(line)
-            callback(messages) # Into the RH_Gateway
-        except:
-            logging.warning("Dropped bad JSON string from input")
-        gevent.sleep(0)
+        if 0 < len(line):
+            try:
+                messages = json.loads(line)
+                callback(messages) # Into the RH_Gateway
+            except:
+                logging.error("Inbound message delivery failure\nLine:{0}\nException {1}".format(
+                    line,
+                    traceback.format_exc()))
+        gevent.sleep(0.25)
 
 """
 This worker listens to the outbox and forwards anything found to STDOUT
 """
 def outboundWorker(callback):
     while True:
-        messages = callback()
+        messages = callback() # From the RH_Gateway
         if (0 < len(messages)):
-            print(json.dumps(messages)); sys.stdout.flush();
-        gevent.sleep(0)
+            print(json.dumps(messages));
+        gevent.sleep(0.25)
 
 """
 Spawn greenlets and wait (joinall)
 """
 if __name__ == '__main__':
-    logging.getLogger('std_front').setLevel(logging.INFO)
+    logging.basicConfig()
+    logger = logging.getLogger('std_front')
+    logger.setLevel(logging.INFO)
     try:
         gw = RH_Gateway()
         gw.start()
-        ge_inbox = gevent.spawn(inboundWorker, ge_gateway.sendMessages)
-        ge_outbox = gevent.spawn(outboundWorker, ge_gateway.getMessages)
+        ge_inbox = gevent.spawn(inboundWorker, gw.sendMessages)
+        ge_outbox = gevent.spawn(outboundWorker, gw.getMessages)
+        logger.info('Interface to RH Gateway created')
 
         # Capture interruptions/exits
         gevent.signal(signal.SIGTERM, ge_inbox.kill)
@@ -79,10 +86,13 @@ if __name__ == '__main__':
         gevent.signal(signal.SIGINT, ge_outbox.kill)
         
         # Wait...
+        logger.info('Interface RH Gateway ready')
         gevent.joinall([ge_inbox, ge_outbox])
+        logger.info('Interface to RH Gateway closed')
     except:
-        raise
+        logger.error('RH Gateway STDIN/OUT Exception: {0}'.format(traceback.format_exc()))
     finally:
         # Clean-up
         gw.stop()
+        logger.info('RH Gateway stopped')
     
