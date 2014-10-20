@@ -57,8 +57,10 @@ def Outbound(callback, address=None):
 
 class Inbound(object):
     def __init__(self, callback):
+        self._log = logging.getLogger('zerorpc-inbound')
         self._callback = callback
     def passMessages(self, messages):
+        print ('Passing in {0}'.format(messages)); sys.stdout.flush();
         return self._callback(messages)
     
 # ZeroRPC server wrapping the RH_Gateway
@@ -73,7 +75,7 @@ if __name__ == '__main__':
         try:
             logger.info("Initializing RH Gateway")
             gw = RH_Gateway()
-            gw.start()
+            gw_inst = gevent.spawn(gw.start)
             
             logger.info("Spawning ZeroRPC Outbound Client")
             ge_outbound = gevent.spawn(Outbound, gw.getMessages, sys.argv[1] + "_node2rh")
@@ -90,7 +92,7 @@ if __name__ == '__main__':
             try:
                 logger.info("RH Gateway shutting down ZeroRPC Client")
                 ge_outbound.kill();
-                gevent.joinall([ge_outbound])
+                gevent.joinall([gw_inst, ge_outbound])
                 os.remove(sys.argv[1].replace("ipc://","") + "_rh2node");
             except: 
                 logger.warning("RH Gateway error in closing down ZPC Client")
