@@ -27,8 +27,11 @@ from ossie.cf import CF
 from bulkio.bulkioInterfaces import BULKIO__POA
 from omniORB import CORBA
 
-import string, sys, json
+import string
+import sys
+import json
 from Queue import Queue
+import threading
 from threading import Lock
 
 # For reshaping data streams
@@ -122,7 +125,9 @@ class Port(Proxy_Base):
         if ('update' == message['change']):
             return self.getUpdateFromHere('update')
         elif ('start' == message['change']) and not self._streaming:
-            self._start()
+            # Give momentary delay before beginning the stream.
+            self._timer = threading.Timer(1.0, self._start)
+            self._timer.start()
             return [self.getMessage('stream')]
         elif ('stop' == message['change']) and self._streaming:
             self._stop()
@@ -267,7 +272,7 @@ class Port_FRONTEND(Port):
         try:
             msg = self.getMessage('stream')
             msg['more']['data'] = self._getDataMessages()
-            self._outbox.put([msg])
+            self.sendMessages([msg])
         except:
             # Exception likely because attached device is gone so stop
             # streaming.
