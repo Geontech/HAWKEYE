@@ -31,11 +31,11 @@ var DEFAULTS = { UserPort : 8888,
                  Log_STDOUT : false,
                  Log_STDERR : false };
 
-module.exports = function (app, options) {
+module.exports = function (app, session_interface, options) {
 
     var url = require('url'),
         fs = require('fs'),
-        rh_session = require('./util/rh_session'),
+        rh_session = session_interface,
         express = require('express'),
         server = require('http').createServer(app),
         sio = require('socket.io').listen(server);
@@ -75,20 +75,17 @@ module.exports = function (app, options) {
     // When the browser's JS reaches out, the real work starts.
     // See "Server" @ https://github.com/LearnBoost/socket.io/wiki/Exposed-events
     // The "sockets" member only has one named event: connection.
-    // FIXME: What to do when client is reconnecting/refreshing?  Seems to cause ZeroRPC
-    //        and child process artifacts in rh_session occasionally (i.e., rh_gateway.py
-    //        instances sleeping in the background for all TIME ... Time... time...)
     sio.sockets.on('connection', function(socket) {
         console.info('Establishing client session: ' + socket.id);      
         session = rh_session.getSessionForSocket(socket);
         if (settings.Log_STDERR) {
             session.mapSTDERRtoFunction( function(data) {
-                console.info(data);
+                console.info('RH_Gateway stderr: ' + data);
             });
         }        
         if (settings.Log_STDOUT) {
             session.mapSTDOUTtoFunction( function(data) {
-                console.info(data);
+                console.info('RH_Gateway stdout: ' + data);
             });
         }
     });
