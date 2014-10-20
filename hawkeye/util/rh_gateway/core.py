@@ -43,7 +43,10 @@ def RH_Message(change='', rhtype='', rhid='', rhname='', more={}):
     msg['more'].update(more)
     return msg
 
-import sys, time, logging, threading
+import sys
+import time
+import logging
+import threading
 
 # Abstract base class for proxies
 class Proxy_Base(object):    
