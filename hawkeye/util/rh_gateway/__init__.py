@@ -214,7 +214,7 @@ class RH_Gateway(object):
                                        rhname = name))
         except:
             self._log.error("Caught exception while scanning REDHAWK CORE: {0}".format(traceback.format_exc()))
-            raise
+            self._log.error("This usually happens when Omni services are unable to connect with the server.")
             
         finally:
             return msgs
