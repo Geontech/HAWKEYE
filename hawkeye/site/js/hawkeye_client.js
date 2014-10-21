@@ -87,6 +87,15 @@ jQuery.noConflict();
         socket.on('message', processMessages);
     });
     
+    // Thanks to Stack Overflow 7831712
+    function sortUsingNestedText(parent, childSelector, keySelector) {
+        var items = parent.children(childSelector).sort(function(a, b) {
+            var vA = $(keySelector, a).text();
+            var vB = $(keySelector, b).text();
+            return (vA < vB) ? -1 : (vA > vB) ? 1 : 0;
+        });
+        parent.append(items);
+    }
     
     function processMessages(messages) {
         try {
@@ -104,6 +113,7 @@ jQuery.noConflict();
                                 if (null != $awidget) {
                                     var $parent = getParentFromMessage(message);
                                     $awidget.appendTo($parent);
+                                    sortUsingNestedText($parent, 'div', 'label.show_hide');
                                     
                                     // Set hide/show relative to siblings if they exist.  If none exists,
                                     // hide the new widget, initially.
