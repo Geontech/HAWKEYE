@@ -53,7 +53,7 @@ def Outbound(callback, address=None):
             except:
                 pass
             finally:
-                gevent.sleep(0)
+                gevent.sleep(0.5)
 
 class Inbound(object):
     def __init__(self, callback):

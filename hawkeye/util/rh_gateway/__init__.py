@@ -44,6 +44,7 @@ class RH_Gateway(object):
     def __init__(self, maxQueueSizes=500):
         self._log = logging.getLogger(type(self).__name__)
         self._log.setLevel(logging.INFO)
+        self._event = threading.Event()
         
         if 100 > maxQueueSizes:
             maxQueueSizes = 100
@@ -60,10 +61,9 @@ class RH_Gateway(object):
         self._domainScanningPeriod = 1
         self._domainScanningTimer = None
         
-        self._runLock = threading.Lock()
         self._running = False
         self._runThread = None
-        self._runPeriod = 0.25
+        self._runPeriod = 0.5
         
         self._getCallback = None
         
@@ -78,7 +78,6 @@ class RH_Gateway(object):
             self._domains = []
         except:
             self._log.error("RH Gateway caught exception on shutdown: {0}".format(traceback.format_exc()))
-            raise
     
     """
     Assign a callback for "getMessages" which will empty the out-going queue
@@ -106,50 +105,47 @@ class RH_Gateway(object):
     """
     Returns a list of RH Messages (if any exist) or an empty list.
     """
-    def getMessages(self):
+    def getMessages(self, max_returned=0):
         messages = []
         while not self._outbox.empty():
             messages.append(self._outbox.get())
+            if 0 < max_returned and max_returned <= len(messages):
+                break;
         return messages
-    
+        
     @property
-    def running(self):
-        self._runLock.acquire()
-        v = self._running
-        self._runLock.release()
-        return v
-    
-    @running.setter
-    def running(self, val):
-        self._runLock.acquire()
-        self._running = val
-        self._runLock.release()
+    def stopped(self):
+        return self._event.isSet()
     
     def start(self):
-        self.running = True
+        self._event.clear()
         self._domainScanningTimer = threading.Timer(
             self._domainScanningPeriod, 
             self._domainScan)
         self._domainScanningTimer.start()
         self._runThread = threading.Thread(target=self._runLoop)
-        self._runThread.daemon = True
         self._runThread.start()
     
     def stop(self):
-        if self._domainScanningTimer:
-            self._domainScanningTimer.cancel()
-            self._domainScanningTimer = None
-        self.running = False
-        if self._runThread:
-            self._runThread.join(5)
-            self._runThread = None
+        self._event.set()
+        try:
+            if self._domainScanningTimer:
+                self._domainScanningTimer.cancel()
+                self._domainScanningTimer = None
+            if self._runThread:
+                self._runThread.join()
+                self._runThread = None
+        except KeyboardInterrupt:
+            pass
+        except:
+            self._log.error("Exception raised while stopping the RH_Gateway. {0}".format(traceback.format_exc()))
     
     """
     Pushes messages from the inbox into the Domains; transfers any responses 
     to the outbox queue.
     """
     def _runLoop(self):
-        while self.running:
+        while not self.stopped:
             if not self._inbox.empty():
                 msg = self._inbox.get()
                 retMessages = []

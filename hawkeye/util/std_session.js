@@ -121,7 +121,7 @@ function RH_Session (socketIn) {
     // Spawn and configure RH Gateway child process.
     var p = path.relative(process.cwd(), __dirname);
     var gateway = spawn(
-        'python', ['-u', p + '/std_front.py'], // Python, STDIN/OUT frontend to  RH Gateway
+        'python', [ p + '/std_front.py'], // Python, STDIN/OUT frontend to  RH Gateway
         { stdio:['pipe', 'pipe', process.stderr] });   // Configure STDIN/OUT as pipes to this process
     gateway
         .on('close', function (code, signal) {
@@ -167,7 +167,7 @@ function RH_Session (socketIn) {
         try {
             console.log("Closing Node<-REDHAWK Client");
             gateway.stdin.end();
-            gateway.kill('SIGINT');
+            //gateway.kill('SIGINT');
         }
         catch (error) {
             console.error("Error on shutdown of session"); console.error(error);

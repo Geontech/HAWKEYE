@@ -28,71 +28,101 @@ from rh_gateway import RH_Gateway
 # `gevent, signal, fcntl, os` all related to the read/write through the gateway.
 import sys
 import json
-import gevent
-from gevent.socket import wait_read
+import threading
+import time
 import signal
-import fcntl
 import os
 import logging
 import traceback
 
 """
-This worker attempts to readline() from STDIN and pass any resulting messages
-to the inbox.  This has been adapted from: https://gist.github.com/tmc/787105
+Thread-safe STDIN reader
 """
-def inboundWorker(callback):
-    fcntl.fcntl(sys.stdin, fcntl.F_SETFL, os.O_NONBLOCK)
-    while True:
-        wait_read(sys.stdin.fileno())
-        line = sys.stdin.readline()
-        if 0 < len(line):
-            try:
-                messages = json.loads(line)
-                callback(messages) # Into the RH_Gateway
-            except:
-                logging.error("Inbound message delivery failure\nLine:{0}\nException {1}".format(
-                    line,
-                    traceback.format_exc()))
-        gevent.sleep(0.25)
+class STDINReader(threading.Thread):
+    LOCK = threading.Lock()
+    def __init__(self, callback):
+        threading.Thread.__init__(self)
+        self.callback = callback
+        self._event = threading.Event()
+    
+    def run(self):
+        while True:
+            time.sleep(1)
+            if self.stopped:
+                return
+            for line in sys.stdin:
+                try: 
+                    messages = json.loads(line)
+                    time.sleep(1.0)
+                    with self.LOCK:
+                        self.callback(messages) # Into the RH_Gateway
+                except:
+                    logging.error("Inbound message delivery failure\nLine:{0}\nException {1}".format(
+                        line,
+                        traceback.format_exc()))
+    def stop(self):
+        self._event.set()
+    @property
+    def stopped(self):
+        return self._event.isSet()
 
 """
-This worker listens to the outbox and forwards anything found to STDOUT
+Thread-safe STDOUT writer
 """
-def outboundWorker(callback):
-    while True:
-        messages = callback() # From the RH_Gateway
-        if (0 < len(messages)):
-            print(json.dumps(messages));
-        gevent.sleep(0.25)
+class STDOUTWriter(threading.Thread):
+    LOCK = threading.Lock()
+    def __init__(self, callback, limit=0):
+        threading.Thread.__init__(self)
+        self.callback = callback
+        self.limit = limit
+        self._event = threading.Event()
+        
+    def run(self):
+        while True:
+            time.sleep(1.0)
+            if self.stopped:
+                return
+            messages = self.callback(self.limit)
+            if 0 < len(messages):
+                time.sleep(1.0)
+                with self.LOCK:
+                    print(json.dumps(messages, sort_keys=True)) # Out of the RH_Gateway
+    def stop(self):
+        self._event.set()
+    @property
+    def stopped(self):
+        return self._event.isSet()
 
-"""
-Spawn greenlets and wait (joinall)
-"""
+
 if __name__ == '__main__':
     logging.basicConfig()
     logger = logging.getLogger('std_front')
     logger.setLevel(logging.INFO)
     try:
-        gw = RH_Gateway()
-        gw.start()
-        ge_inbox = gevent.spawn(inboundWorker, gw.sendMessages)
-        ge_outbox = gevent.spawn(outboundWorker, gw.getMessages)
-        logger.info('Interface to RH Gateway created')
-
-        # Capture interruptions/exits
-        gevent.signal(signal.SIGTERM, ge_inbox.kill)
-        gevent.signal(signal.SIGINT, ge_inbox.kill)
-        gevent.signal(signal.SIGTERM, ge_outbox.kill)
-        gevent.signal(signal.SIGINT, ge_outbox.kill)
+        Gateway = RH_Gateway()
+        Reader = STDINReader(Gateway.sendMessages)
+        Writer = STDOUTWriter(Gateway.getMessages, 1)
         
-        # Wait...
-        logger.info('Interface RH Gateway ready')
-        gevent.joinall([ge_inbox, ge_outbox])
-        logger.info('Interface to RH Gateway closed')
+        Gateway.start()
+        Reader.start()
+        Writer.start()
+        logger.info('Interface to RH Gateway started')
+        while True:
+            time.sleep(0.5)
+    except KeyboardInterrupt, IOError:
+        logger.info('RH Gateway received notice to shutdown.')
     except:
         logger.error('RH Gateway STDIN/OUT Exception: {0}'.format(traceback.format_exc()))
     finally:
-        # Clean-up
-        gw.stop()
+        Gateway.stop()
+        while not Gateway.stopped:
+            time.sleep(0.5)
+        Reader.stop()
+        Reader.join()
+        Writer.stop()
+        Writer.join()
+        
+        # Gateway Join is not necessary
         logger.info('RH Gateway stopped')
+        sys.exit()
     

@@ -647,6 +647,9 @@ jQuery.noConflict();
                 .attr('rhname', name);
         },        
         configureMessage: function (newMessage) {
+            if (null == newMessage.more.value) 
+                return;
+                
             // Clear everything in the form and classes
             this.$form.empty().removeClass();
             this.$label.appendTo(this.$form); // Move the label.

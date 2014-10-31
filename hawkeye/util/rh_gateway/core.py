@@ -89,6 +89,7 @@ class Proxy_Base(object):
         self._timerPeriodSec = 1.0
         
         self._logger = None
+        self.allDescendentIDs = []
         
         # Announce creation and then finish init.
         self.sendMessages([self.getMessage('add')])
